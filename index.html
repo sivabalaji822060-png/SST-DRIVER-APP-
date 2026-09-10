@@ -24,9 +24,9 @@ label{display:block;font-size:13px;font-weight:700;margin:10px 0 6px}input{width
 </style>
 <style>
 #cloudLogin{position:fixed;inset:0;z-index:99998;background:#071426;display:flex;align-items:center;justify-content:center;padding:20px}
-.cloudBox{background:white;color:#111827;width:min(430px,100%);padding:24px;border-radius:18px;box-shadow:0 20px 60px #0008}
+.cloudBox{background:white;color:#111827;width:100%;max-width:430px;padding:20px;border-radius:18px;box-shadow:0 20px 60px #0008}
 .cloudBox h2{margin:0 0 6px}.cloudBox input{width:100%;padding:12px;margin:7px 0;border:1px solid #cbd5e1;border-radius:9px}
-.cloudBtn{width:100%;padding:12px;border:0;border-radius:9px;background:#0b2d55;color:white;font-weight:800;margin-top:8px}
+.cloudBtn{width:100%;padding:14px;border:0;border-radius:9px;background:#0b2d55;color:white;font-weight:800;margin-top:8px;font-size:16px;touch-action:manipulation}.cloudBtn:active{transform:scale(.99);opacity:.9}
 #cloudBar{display:none;background:#071426;color:white;padding:10px 14px;position:sticky;top:0;z-index:9999}
 #cloudBar .inner{max-width:900px;margin:auto;display:flex;justify-content:space-between;align-items:center;gap:8px}
 .cloudPill{font-size:12px;background:#ffffff18;padding:6px 9px;border-radius:20px}
@@ -45,8 +45,8 @@ label{display:block;font-size:13px;font-weight:700;margin:10px 0 6px}input{width
   <h2>SST Driver App</h2><div>Cloud Login</div>
   <input id="loginEmail" type="email" placeholder="Email">
   <input id="loginPassword" type="password" placeholder="Password">
-  <button class="cloudBtn" id="loginBtn">Login</button>
-  <div id="cloudStatus"></div>
+  <button class="cloudBtn" id="loginBtn" type="button" onclick="window.sstLoginClick && window.sstLoginClick()">Login</button>
+  <div id="cloudStatus">Ready</div>
  </div>
 </div>
 <div id="cloudBar"><div class="inner"><div><b>SST Cloud</b> <span class="cloudPill" id="rolePill">...</span></div><div><span id="userLabel"></span> <button class="cloudSmall" id="logoutBtn">Logout</button></div></div></div>
@@ -174,9 +174,9 @@ function exportPDF(){
 </section>
 
 <script type="module">
-import { initializeApp } from "https://www.gstatic.com/firebasejs/12.2.1/firebase-app.js";
-import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.2.1/firebase-auth.js";
-import { getFirestore, doc, getDoc, collection, addDoc, getDocs, query, where, serverTimestamp } from "https://www.gstatic.com/firebasejs/12.2.1/firebase-firestore.js";
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
+import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
+import { getFirestore, doc, getDoc, collection, addDoc, getDocs, query, where, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
 
 const firebaseConfig={
  apiKey:"AIzaSyCw38laQh6qAgGfm0DN8ACcgNxPVtmZUVE",
@@ -190,7 +190,14 @@ const app=initializeApp(firebaseConfig), auth=getAuth(app), db=getFirestore(app)
 let me=null, profile=null;
 const $=id=>document.getElementById(id), val=id=>$(id)?.value||"", num=id=>Number(val(id)||0);
 function status(t,bad=false){$("cloudStatus").textContent=t;$("cloudStatus").style.color=bad?"#b91c1c":"#166534"}
-$("loginBtn").onclick=async()=>{try{status("Signing in...");await signInWithEmailAndPassword(auth,val("loginEmail"),val("loginPassword"));}catch(e){status("Login failed: "+e.message,true)}};
+window.sstLoginClick=async()=>{try{
+  status("Signing in...");
+  const email=val("loginEmail").trim(), password=val("loginPassword");
+  if(!email||!password){status("Email and password required.",true);return;}
+  await signInWithEmailAndPassword(auth,email,password);
+}catch(e){
+  status("Login failed: "+(e.code||e.message),true);
+}};
 $("logoutBtn").onclick=()=>signOut(auth);
 
 onAuthStateChanged(auth,async u=>{
