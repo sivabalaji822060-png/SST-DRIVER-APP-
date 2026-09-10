@@ -1,0 +1,386 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#111827">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon-192.png">
+<title>Sri Selvam Driver Account</title>
+<style>
+*{box-sizing:border-box}body{margin:0;font-family:Arial,sans-serif;background:#f3f4f6;color:#111827}.app{max-width:520px;margin:auto;padding:16px}
+.head{background:#111827;color:#fff;border-radius:18px;padding:20px;margin-bottom:14px}.head h1{margin:0;font-size:22px}.head p{margin:6px 0 0;opacity:.8;font-size:13px}
+.card{background:#fff;border-radius:18px;padding:16px;margin-bottom:14px;box-shadow:0 4px 14px #0000000f}h3{margin:0 0 12px;font-size:17px}
+label{display:block;font-size:13px;font-weight:700;margin:10px 0 6px}input{width:100%;padding:14px;border:1px solid #d1d5db;border-radius:12px;font-size:16px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}.tabs{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px}
+.tab{padding:13px;border:0;border-radius:12px;background:#e5e7eb;font-weight:800}.tab.active{background:#111827;color:#fff}.hidden{display:none}
+.row{display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid #eee}.big{background:#ecfdf5;border-radius:16px;padding:17px;margin-top:12px;text-align:center}
+.big small{font-weight:800;color:#065f46}.amt{font-size:30px;font-weight:900;margin-top:5px}textarea{width:100%;min-height:250px;padding:12px;border:1px solid #d1d5db;border-radius:12px}
+.action{width:100%;padding:14px;border:0;border-radius:12px;font-size:16px;font-weight:800;margin-top:10px}.primary{background:#111827;color:#fff}.secondary{background:#e5e7eb}
+.install{background:#fff7ed;border:1px solid #fed7aa}.note{font-size:12px;color:#6b7280;line-height:1.4;margin-top:8px}
+
+#splashScreen{position:fixed;inset:0;background:#fff;z-index:9999;display:flex;align-items:center;justify-content:center;transition:opacity .45s ease}
+#splashScreen.hide{opacity:0;pointer-events:none}
+#splashScreen img{width:100%;height:100%;object-fit:contain;background:#fff}
+</style>
+<style>
+#cloudLogin{position:fixed;inset:0;z-index:99998;background:#071426;display:flex;align-items:center;justify-content:center;padding:20px}
+.cloudBox{background:white;color:#111827;width:100%;max-width:430px;padding:20px;border-radius:18px;box-shadow:0 20px 60px #0008}
+.cloudBox h2{margin:0 0 6px}.cloudBox input{width:100%;padding:12px;margin:7px 0;border:1px solid #cbd5e1;border-radius:9px}
+.cloudBtn{width:100%;padding:14px;border:0;border-radius:9px;background:#0b2d55;color:white;font-weight:800;margin-top:8px;font-size:16px;touch-action:manipulation}.cloudBtn:active{transform:scale(.99);opacity:.9}
+#cloudBar{display:none;background:#071426;color:white;padding:10px 14px;position:sticky;top:0;z-index:9999}
+#cloudBar .inner{max-width:900px;margin:auto;display:flex;justify-content:space-between;align-items:center;gap:8px}
+.cloudPill{font-size:12px;background:#ffffff18;padding:6px 9px;border-radius:20px}
+.cloudSmall{border:1px solid #ffffff55;background:transparent;color:white;padding:7px 10px;border-radius:8px}
+#cloudStatus{font-size:12px;margin-top:8px}
+#cloudReports{margin-top:16px}
+.reportCards{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}
+.reportCard{background:#f3f4f6;padding:12px;border-radius:10px}
+.reportCard b{display:block;font-size:18px;margin-top:3px}
+#cloudHistory table{width:100%;font-size:12px}
+</style>
+</head>
+<body>
+<div id="cloudLogin">
+ <div class="cloudBox">
+  <h2>SST Driver App</h2><div>Cloud Login</div>
+  <input id="loginEmail" type="email" placeholder="Email">
+  <input id="loginPassword" type="password" placeholder="Password">
+  <button class="cloudBtn" id="loginBtn" type="button" onclick="sstLoginClick()">Login</button>
+  <div id="cloudStatus">Ready</div>
+ </div>
+</div>
+<div id="cloudBar"><div class="inner"><div><b>SST Cloud</b> <span class="cloudPill" id="rolePill">...</span></div><div><span id="userLabel"></span> <button class="cloudSmall" id="logoutBtn">Logout</button></div></div></div>
+<div id="splashScreen"><img src="splash.jpg" alt="Sri Selvam Tours and Travels Driver App"></div><div class="app">
+<div class="head"><h1>Sri Selvam Driver Account</h1><p>Daily Local + Outstation Accounts</p></div>
+<div id="installCard" class="card install hidden"><b>Install App</b><div class="note">Install pannina home screen-la normal app icon madhiri use pannalam.</div><button id="installBtn" class="action primary">Install App</button></div>
+<div class="card"><div class="grid2"><label>Driver Name<input id="driver" placeholder="Driver name"></label><label>Vehicle No<input id="vehicle" placeholder="TN..."></label></div><label>Date<input id="date" type="date"></label></div>
+<div class="tabs"><button id="lb" class="tab active" onclick="tab('local')">Local / Apps</button><button id="ob" class="tab" onclick="tab('out')">Outstation</button></div>
+<div id="local">
+<div class="card"><h3>Earnings</h3><label>Uber<input id="uber" type="number" value="0"></label><label>Ola<input id="ola" type="number" value="0"></label><label>Rapido<input id="rapido" type="number" value="0"></label><label>Namma Yatri<input id="namma" type="number" value="0"></label><label>Travels Local Package<input id="travels" type="number" value="0"></label><label>Cash Collected by Driver<input id="cash" type="number" value="0"></label></div>
+<div class="card"><h3>Expenses</h3><div class="grid2"><label>Salary %<input id="pct" type="number" value="35"></label><label>Fuel / CNG<input id="fuel" type="number" value="0"></label></div><label>Other Expense<input id="other" type="number" value="0"></label></div>
+<div class="card"><div class="row"><span>Total Earnings</span><b id="le">₹0</b></div><div class="row"><span>Driver Salary</span><b id="ls">₹0</b></div><div class="row"><span>Total Expense</span><b id="lx">₹0</b></div><div class="big"><small>OWNER-KU THARA VENDIYA BALANCE</small><div id="lbal" class="amt">₹0</div></div></div>
+</div>
+<div id="out" class="hidden">
+<div class="card"><h3>Outstation Trip</h3><label>Trip / Route<input id="route" placeholder="Chennai to Bangalore"></label><label>Trip Amount<input id="trip" type="number" value="0"></label><label>Cash Collected by Driver<input id="ocash" type="number" value="0"></label></div>
+<div class="card"><h3>Expenses</h3><label>Driver Salary / Bata<input id="bata" type="number" value="0"></label><label>Fuel / CNG / Diesel<input id="ofuel" type="number" value="0"></label><div class="grid2"><label>Toll<input id="toll" type="number" value="0"></label><label>Parking<input id="park" type="number" value="0"></label></div><div class="grid2"><label>Permit<input id="permit" type="number" value="0"></label><label>Other<input id="oother" type="number" value="0"></label></div></div>
+<div class="card"><div class="row"><span>Trip Earnings</span><b id="oe">₹0</b></div><div class="row"><span>Total Expense</span><b id="ox">₹0</b></div><div class="big"><small>OWNER-KU THARA VENDIYA BALANCE</small><div id="obal" class="amt">₹0</div></div></div>
+</div>
+<div class="card"><h3>WhatsApp Account</h3><textarea id="msg" readonly></textarea><button class="action primary" onclick="exportPDF()">Export PDF Bill</button><button class="action secondary" onclick="share()">Share Text</button><button class="action secondary" onclick="copy()">Copy Message</button></div>
+</div>
+<script>
+let active='local', deferredPrompt=null;
+const ids=['driver','vehicle','date','uber','ola','rapido','namma','travels','cash','pct','fuel','other','route','trip','ocash','bata','ofuel','toll','park','permit','oother'];
+const N=id=>Number(document.getElementById(id).value||0), M=v=>'₹'+Math.round(v).toLocaleString('en-IN'), R=v=>'Rs.'+Math.round(v).toLocaleString('en-IN');
+function D(){let v=date.value;if(!v)return'';let [y,m,d]=v.split('-');return d+'.'+m+'.'+y.slice(-2)}
+function tab(t){active=t;local.classList.toggle('hidden',t!='local');out.classList.toggle('hidden',t!='out');lb.classList.toggle('active',t=='local');ob.classList.toggle('active',t=='out');calc()}
+function calc(){
+ let d=driver.value||'-',v=vehicle.value||'-';
+ if(active=='local'){let e=N('uber')+N('ola')+N('rapido')+N('namma')+N('travels'),s=Math.round(e*N('pct')/100),x=s+N('fuel')+N('other'),b=N('cash')-x;
+ le.textContent=M(e);ls.textContent=M(s);lx.textContent=M(x);lbal.textContent=M(b);
+ msg.value=`Sri Selvam Driver Account\n\nDate : ${D()}\nDriver : ${d}\nVehicle : ${v}\n\nEarnings:\nUber : ${R(N('uber'))}\nOla : ${R(N('ola'))}\nRapido : ${R(N('rapido'))}\nNamma Yatri : ${R(N('namma'))}\nTravels Local : ${R(N('travels'))}\n\nTotal Earnings : ${R(e)}\n\nExpense:\nSalary ${N('pct')}% : ${R(s)}\nFuel / CNG : ${R(N('fuel'))}\nOther Expense : ${R(N('other'))}\nTotal Expense : ${R(x)}\n\nCash Collected : ${R(N('cash'))}\nBalance to Owner : ${R(b)}`;
+ }else{let x=N('bata')+N('ofuel')+N('toll')+N('park')+N('permit')+N('oother'),b=N('ocash')-x;oe.textContent=M(N('trip'));ox.textContent=M(x);obal.textContent=M(b);
+ msg.value=`Sri Selvam Outstation Account\n\nDate : ${D()}\nDriver : ${d}\nVehicle : ${v}\nTrip : ${route.value||'-'}\nTrip Amount : ${R(N('trip'))}\n\nExpense:\nSalary / Bata : ${R(N('bata'))}\nFuel : ${R(N('ofuel'))}\nToll : ${R(N('toll'))}\nParking : ${R(N('park'))}\nPermit : ${R(N('permit'))}\nOther : ${R(N('oother'))}\nTotal Expense : ${R(x)}\n\nCash Collected : ${R(N('ocash'))}\nBalance to Owner : ${R(b)}`;}
+ let data={active};ids.forEach(i=>data[i]=document.getElementById(i).value);localStorage.setItem('sstPwa',JSON.stringify(data));
+}
+async function copy(){await navigator.clipboard.writeText(msg.value);alert('Account copied!')}
+async function share(){if(navigator.share)await navigator.share({text:msg.value});else copy()}
+window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();deferredPrompt=e;installCard.classList.remove('hidden')});
+installBtn.onclick=async()=>{if(deferredPrompt){deferredPrompt.prompt();await deferredPrompt.userChoice;deferredPrompt=null;installCard.classList.add('hidden')}};
+ids.forEach(i=>document.getElementById(i).addEventListener('input',calc));
+let saved=localStorage.getItem('sstPwa');if(saved){try{let x=JSON.parse(saved);ids.forEach(i=>{if(x[i]!==undefined)document.getElementById(i).value=x[i]});active=x.active||'local'}catch(e){}}else{let q=new Date();date.value=q.getFullYear()+'-'+String(q.getMonth()+1).padStart(2,'0')+'-'+String(q.getDate()).padStart(2,'0')}
+tab(active);if('serviceWorker'in navigator)navigator.serviceWorker.register('./service-worker.js');
+
+const splash=document.getElementById('splashScreen');
+function hideSplash(){splash.classList.add('hide');setTimeout(()=>splash.remove(),500)}
+setTimeout(hideSplash,2200);
+splash.addEventListener('click',hideSplash);
+
+function esc(s){return String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]))}
+function exportPDF(){
+  let driverName=driver.value||'-', vehicleNo=vehicle.value||'-', dt=D();
+  let rows='', title='', balance=0, totalEarn=0, totalExp=0, cashAmt=0;
+  if(active==='local'){
+    totalEarn=N('uber')+N('ola')+N('rapido')+N('namma')+N('travels');
+    let sal=Math.round(totalEarn*N('pct')/100);
+    totalExp=sal+N('fuel')+N('other'); cashAmt=N('cash'); balance=cashAmt-totalExp;
+    title='DAILY LOCAL / APP ACCOUNT';
+    rows=`
+      <tr><td>Uber</td><td>${R(N('uber'))}</td></tr>
+      <tr><td>Ola</td><td>${R(N('ola'))}</td></tr>
+      <tr><td>Rapido</td><td>${R(N('rapido'))}</td></tr>
+      <tr><td>Namma Yatri</td><td>${R(N('namma'))}</td></tr>
+      <tr><td>Travels Local Package</td><td>${R(N('travels'))}</td></tr>
+      <tr class="total"><td>Total Earnings</td><td>${R(totalEarn)}</td></tr>
+      <tr><td>Driver Salary (${N('pct')}%)</td><td>${R(sal)}</td></tr>
+      <tr><td>Fuel / CNG</td><td>${R(N('fuel'))}</td></tr>
+      <tr><td>Other Expense</td><td>${R(N('other'))}</td></tr>
+      <tr class="total"><td>Total Expense</td><td>${R(totalExp)}</td></tr>
+      <tr><td>Cash Collected by Driver</td><td>${R(cashAmt)}</td></tr>`;
+  } else {
+    totalEarn=N('trip'); totalExp=N('bata')+N('ofuel')+N('toll')+N('park')+N('permit')+N('oother');
+    cashAmt=N('ocash'); balance=cashAmt-totalExp; title='OUTSTATION TRIP ACCOUNT';
+    rows=`
+      <tr><td>Trip / Route</td><td>${esc(route.value||'-')}</td></tr>
+      <tr><td>Trip Amount</td><td>${R(totalEarn)}</td></tr>
+      <tr><td>Driver Salary / Bata</td><td>${R(N('bata'))}</td></tr>
+      <tr><td>Fuel / CNG / Diesel</td><td>${R(N('ofuel'))}</td></tr>
+      <tr><td>Toll</td><td>${R(N('toll'))}</td></tr>
+      <tr><td>Parking</td><td>${R(N('park'))}</td></tr>
+      <tr><td>Permit</td><td>${R(N('permit'))}</td></tr>
+      <tr><td>Other Expense</td><td>${R(N('oother'))}</td></tr>
+      <tr class="total"><td>Total Expense</td><td>${R(totalExp)}</td></tr>
+      <tr><td>Cash Collected by Driver</td><td>${R(cashAmt)}</td></tr>`;
+  }
+  const bill=`<!doctype html><html><head><meta charset="utf-8"><title>Sri Selvam Driver Account</title>
+  <style>
+  @page{size:A4;margin:14mm}*{box-sizing:border-box}body{font-family:Arial,sans-serif;color:#111827;margin:0}
+  .head{text-align:center;border-bottom:3px solid #111827;padding-bottom:12px;margin-bottom:18px}
+  h1{margin:0;font-size:25px}.sub{font-size:13px;letter-spacing:2px;margin-top:5px}.type{margin-top:12px;font-weight:800;font-size:15px}
+  .meta{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px;font-size:14px}.meta div{padding:8px;background:#f3f4f6;border-radius:6px}
+  table{width:100%;border-collapse:collapse;font-size:14px}td{padding:10px;border-bottom:1px solid #ddd}td:last-child{text-align:right;font-weight:700}
+  .total td{font-weight:800;background:#f8fafc}.balance{margin-top:18px;border:2px solid #111827;padding:14px;display:flex;justify-content:space-between;font-size:20px;font-weight:900}
+  .foot{text-align:center;margin-top:25px;font-size:11px;color:#6b7280}
+  </style></head><body>
+  <div class="head"><h1>SRI SELVAM</h1><div class="sub">TOURS AND TRAVELS</div><div class="type">${title}</div></div>
+  <div class="meta"><div><b>Date:</b> ${esc(dt)}</div><div><b>Vehicle:</b> ${esc(vehicleNo)}</div><div><b>Driver:</b> ${esc(driverName)}</div><div><b>Account:</b> Driver Settlement</div></div>
+  <table>${rows}</table>
+  <div class="balance"><span>BALANCE TO OWNER</span><span>${R(balance)}</span></div>
+  <div class="foot">Sri Selvam Tours and Travels • Driver Account Statement</div>
+  <script>window.onload=()=>setTimeout(()=>window.print(),250)<\/script><section class="card" style="margin-top:16px"><h2>Customer Bill / Invoice</h2><div class="grid">
+<label>Invoice No<input id="invno" placeholder="SST-001"></label><label>Bill Date<input id="invdate" type="date"></label>
+<label>Customer Name<input id="custname"></label><label>Mobile<input id="custmobile"></label>
+<label>Pickup<input id="pickup"></label><label>Drop<input id="drop"></label>
+<label>Trip Details<input id="tripdetails"></label><label>Vehicle Type<input id="vehicletype"></label>
+<label>Vehicle No<input id="billvehno"></label><label>Total KM / Package<input id="billkm"></label>
+<label>Base Fare ₹<input id="basefare" type="number" value="0"></label><label>Additional KM / Hour ₹<input id="addfare" type="number" value="0"></label>
+<label>Toll ₹<input id="billtoll" type="number" value="0"></label><label>Parking ₹<input id="billparking" type="number" value="0"></label>
+<label>Permit ₹<input id="billpermit" type="number" value="0"></label><label>Driver Bata ₹<input id="billbata" type="number" value="0"></label>
+<label>Advance Paid ₹<input id="advance" type="number" value="0"></label><label>Payment Mode<select id="paymode"><option>Cash</option><option>UPI</option><option>Bank Transfer</option><option>Card</option></select></label>
+</div><button class="action primary" onclick="customerInvoicePDF()">Generate Customer PDF Bill</button></section>
+<section class="card" id="cloudReports">
+ <h2>Monthly Cloud Report</h2>
+ <div class="grid">
+  <label>Month<input type="month" id="reportMonth"></label>
+  <label>Driver / Vehicle Filter<input id="reportFilter" placeholder="Optional"></label>
+ </div>
+ <button class="action primary" id="loadReportBtn">Load Monthly Report</button>
+ <div class="reportCards">
+  <div class="reportCard">Local Earnings<b id="rLocal">₹0</b></div>
+  <div class="reportCard">Outstation Earnings<b id="rOut">₹0</b></div>
+  <div class="reportCard">Expenses<b id="rExp">₹0</b></div>
+  <div class="reportCard">Owner Balance<b id="rBal">₹0</b></div>
+ </div>
+ <div id="cloudHistory"></div>
+</section>
+
+
+
+
+
+<script>
+const FIREBASE_API_KEY = "AIzaSyCw38laQh6qAgGfm0DN8ACcgNxPVtmZUVE";
+const FIREBASE_PROJECT_ID = "sst-driver-app";
+
+let currentUser = null;
+let idToken = null;
+let userProfile = { role: "driver" };
+
+const el = id => document.getElementById(id);
+const val = id => el(id)?.value || "";
+const num = id => Number(val(id) || 0);
+
+function cloudStatus(text, bad=false){
+  const s=el("cloudStatus");
+  if(!s) return;
+  s.textContent=text;
+  s.style.color=bad ? "#b91c1c" : "#166534";
+}
+
+function fsValue(v){
+  if (typeof v === "number") return { doubleValue: v };
+  if (typeof v === "boolean") return { booleanValue: v };
+  if (v === null || v === undefined) return { nullValue: null };
+  return { stringValue: String(v) };
+}
+
+function encodeFields(obj){
+  const fields={};
+  for(const [k,v] of Object.entries(obj)) fields[k]=fsValue(v);
+  return { fields };
+}
+
+function decodeFields(fields={}){
+  const out={};
+  for(const [k,v] of Object.entries(fields)){
+    if("stringValue" in v) out[k]=v.stringValue;
+    else if("integerValue" in v) out[k]=Number(v.integerValue);
+    else if("doubleValue" in v) out[k]=Number(v.doubleValue);
+    else if("booleanValue" in v) out[k]=v.booleanValue;
+    else out[k]=null;
+  }
+  return out;
+}
+
+async function firebaseLogin(email,password){
+  const r=await fetch(
+    `https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=${FIREBASE_API_KEY}`,
+    {
+      method:"POST",
+      headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({email,password,returnSecureToken:true})
+    }
+  );
+  const data=await r.json();
+  if(!r.ok) throw new Error(data?.error?.message || "LOGIN_FAILED");
+  return data;
+}
+
+async function getUserProfile(uid){
+  const r=await fetch(
+    `https://firestore.googleapis.com/v1/projects/${FIREBASE_PROJECT_ID}/databases/(default)/documents/users/${uid}`,
+    {headers:{Authorization:`Bearer ${idToken}`}}
+  );
+  if(!r.ok) return {role:"driver",name:currentUser.email};
+  const data=await r.json();
+  return {...{role:"driver",name:currentUser.email}, ...decodeFields(data.fields)};
+}
+
+async function addFirestoreDoc(collectionName,obj){
+  const r=await fetch(
+    `https://firestore.googleapis.com/v1/projects/${FIREBASE_PROJECT_ID}/databases/(default)/documents/${collectionName}`,
+    {
+      method:"POST",
+      headers:{
+        "Content-Type":"application/json",
+        Authorization:`Bearer ${idToken}`
+      },
+      body:JSON.stringify(encodeFields(obj))
+    }
+  );
+  const data=await r.json();
+  if(!r.ok) throw new Error(data?.error?.message || "FIRESTORE_WRITE_FAILED");
+  return data;
+}
+
+async function sstLoginClick(){
+  const b=el("loginBtn");
+  try{
+    const email=val("loginEmail").trim();
+    const password=val("loginPassword");
+    if(!email || !password){
+      cloudStatus("Email & Password enter pannunga.",true);
+      return;
+    }
+    b.disabled=true;
+    b.textContent="Signing in...";
+    cloudStatus("Signing in...");
+    const data=await firebaseLogin(email,password);
+    idToken=data.idToken;
+    currentUser={uid:data.localId,email:data.email};
+    sessionStorage.setItem("sstIdToken",idToken);
+    sessionStorage.setItem("sstUid",currentUser.uid);
+    sessionStorage.setItem("sstEmail",currentUser.email);
+    userProfile=await getUserProfile(currentUser.uid);
+    showApp();
+  }catch(e){
+    cloudStatus("Login failed: "+e.message,true);
+    b.disabled=false;
+    b.textContent="Login";
+  }
+}
+
+function showApp(){
+  el("rolePill").textContent=userProfile.role || "driver";
+  el("userLabel").textContent=userProfile.name || currentUser.email;
+  el("cloudLogin").style.display="none";
+  el("cloudBar").style.display="block";
+}
+
+function sstLogout(){
+  sessionStorage.clear();
+  currentUser=null; idToken=null; userProfile={role:"driver"};
+  el("cloudLogin").style.display="flex";
+  el("cloudBar").style.display="none";
+  const b=el("loginBtn");
+  b.disabled=false;b.textContent="Login";
+  cloudStatus("Ready");
+}
+
+async function sstCloudSave(){
+  if(!currentUser || !idToken) return alert("Please login");
+  try{
+    if(window.active==="out"){
+      const totalEarnings=num("trip");
+      const totalExpense=num("bata")+num("ofuel")+num("toll")+num("park")+num("permit")+num("oother");
+      const cashCollection=num("ocash");
+      await addFirestoreDoc("outstation_accounts",{
+        driverUid:currentUser.uid,driverName:val("driver"),vehicleNo:val("vehicle"),
+        date:typeof D==="function"?D():new Date().toISOString().slice(0,10),
+        route:val("route"),totalEarnings,bata:num("bata"),fuel:num("ofuel"),
+        toll:num("toll"),parking:num("park"),permit:num("permit"),otherExpense:num("oother"),
+        totalExpense,cashCollection,ownerBalance:cashCollection-totalExpense
+      });
+    } else {
+      const totalEarnings=num("uber")+num("ola")+num("rapido")+num("namma")+num("travels");
+      const salary=Math.round(totalEarnings*num("pct")/100);
+      const totalExpense=salary+num("fuel")+num("other");
+      const cashCollection=num("cash");
+      await addFirestoreDoc("daily_accounts",{
+        driverUid:currentUser.uid,driverName:val("driver"),vehicleNo:val("vehicle"),
+        date:typeof D==="function"?D():new Date().toISOString().slice(0,10),
+        uber:num("uber"),ola:num("ola"),rapido:num("rapido"),nammaYatri:num("namma"),
+        travelsLocal:num("travels"),totalEarnings,salaryPercent:num("pct"),salary,
+        fuel:num("fuel"),otherExpense:num("other"),totalExpense,cashCollection,
+        ownerBalance:cashCollection-totalExpense
+      });
+    }
+    alert("Cloud saved successfully");
+  }catch(e){
+    alert("Cloud save failed: "+e.message);
+  }
+}
+
+async function sstSaveInvoice(){
+  if(!currentUser || !idToken) return alert("Please login");
+  try{
+    const gross=num("basefare")+num("addfare")+num("billtoll")+num("billparking")+num("billpermit")+num("billbata");
+    const advance=num("advance");
+    await addFirestoreDoc("customer_invoices",{
+      createdBy:currentUser.uid,
+      invoiceNo:val("invno")||("SST-"+Date.now().toString().slice(-6)),
+      date:val("invdate")||new Date().toISOString().slice(0,10),
+      customerName:val("custname"),mobile:val("custmobile"),pickup:val("pickup"),drop:val("drop"),
+      tripDetails:val("tripdetails"),vehicleType:val("vehicletype"),vehicleNo:val("billvehno"),
+      packageKm:val("billkm"),baseFare:num("basefare"),additionalFare:num("addfare"),
+      toll:num("billtoll"),parking:num("billparking"),permit:num("billpermit"),bata:num("billbata"),
+      grossTotal:gross,advance,balance:gross-advance,paymentMode:val("paymode")
+    });
+    alert("Customer invoice saved to cloud");
+  }catch(e){
+    alert("Invoice cloud save failed: "+e.message);
+  }
+}
+
+document.addEventListener("DOMContentLoaded",()=>{
+  const logout=el("logoutBtn");
+  if(logout) logout.onclick=sstLogout;
+
+  const first=document.querySelector(".action");
+  if(first && !el("cloudSaveBtn")){
+    const b=document.createElement("button");
+    b.id="cloudSaveBtn";b.className="action primary";b.textContent="Save to Cloud";b.onclick=sstCloudSave;
+    first.parentNode.insertBefore(b,first);
+  }
+
+  const pdf=[...document.querySelectorAll("button")].find(b=>b.textContent.includes("Generate Customer PDF"));
+  if(pdf && !el("invoiceCloudBtn")){
+    const b=document.createElement("button");
+    b.id="invoiceCloudBtn";b.className="action secondary";b.textContent="Save Invoice to Cloud";b.onclick=sstSaveInvoice;
+    pdf.after(b);
+  }
+
+  cloudStatus("Ready");
+});
+</script>
+</body>
+</html>
