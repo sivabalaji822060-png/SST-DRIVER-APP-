@@ -1,0 +1,610 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#061a2d">
+<title>SST Driver Management</title>
+<style>
+:root{--navy:#061a2d;--blue:#124f89;--bg:#eef3f8;--card:#fff;--muted:#64748b;--green:#0b7a4b;--red:#a32929;--gold:#b58a35}
+*{box-sizing:border-box}body{margin:0;font-family:Arial,sans-serif;background:var(--bg);color:#132033}
+button,input,select,textarea{font:inherit}button{cursor:pointer}
+header{background:var(--navy);color:#fff;padding:14px 14px;position:sticky;top:0;z-index:20}
+.headerRow{max-width:920px;margin:auto;display:flex;justify-content:space-between;align-items:center;gap:10px}
+header b{font-size:20px}header small{display:block;opacity:.82;margin-top:3px}.hdrBtns{display:flex;gap:7px}
+main{max-width:920px;margin:auto;padding:12px}.card{background:#fff;border-radius:18px;padding:15px;margin-bottom:12px;box-shadow:0 3px 14px #00000010}
+h2,h3{margin:0 0 12px}.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}.full{grid-column:1/-1}
+label{font-size:13px;font-weight:700;display:block;margin:2px 0 6px}input,select,textarea{width:100%;padding:12px;border:1px solid #d4dce5;border-radius:11px;font-size:15px;background:#fff;color:#132033}
+input[readonly]{background:#f3f6f9}.btn{border:0;border-radius:11px;padding:12px 14px;font-size:14px;font-weight:700;background:var(--blue);color:white}.btn.alt{background:#e7eef6;color:#123}.btn.danger{background:var(--red)}.btn.green{background:var(--green)}.btn.gold{background:var(--gold)}
+.nav{max-width:920px;margin:10px auto 0;display:flex;gap:7px;overflow:auto;padding:0 12px 4px}.nav button{white-space:nowrap;background:#dce6f0;color:#334155}.nav button.active{background:var(--blue);color:white}
+.tabs{display:flex;gap:8px;margin-bottom:12px}.tabs button{flex:1}.tabs .off{background:#dce6f0;color:#334155}
+.summary{display:grid;grid-template-columns:repeat(4,1fr);gap:9px}.metric{background:#f3f7fb;padding:12px;border-radius:12px}.metric span{font-size:12px;color:var(--muted);display:block}.metric b{font-size:18px}.good{color:var(--green)}.bad{color:var(--red)}
+.actions{display:flex;gap:8px;flex-wrap:wrap}.actions .btn{flex:1;min-width:110px}.status{font-size:13px;margin-top:9px}.tiny{font-size:12px;color:var(--muted)}
+.row{border-top:1px solid #e5e7eb;padding:12px 0}.row:first-child{border-top:0}.rowHead{display:flex;justify-content:space-between;gap:8px;align-items:flex-start}.rowActions{display:flex;gap:6px;flex-wrap:wrap}.rowActions .btn{padding:7px 9px;font-size:12px}
+.badge{display:inline-block;padding:4px 8px;border-radius:999px;background:#e7eef6;font-size:11px;font-weight:700}.badge.admin{background:#fff3d7;color:#7a5411}.badge.driver{background:#e8f5ee;color:#11633e}
+#login{min-height:100vh;background:var(--navy);display:flex;align-items:center;padding:22px}.loginbox{background:white;border-radius:22px;padding:22px;width:100%;max-width:440px;margin:auto}.brand{font-weight:800;font-size:23px}
+#app{display:none}.section{display:none}.section.active{display:block}.roleNote{padding:9px 11px;border-radius:10px;background:#f8fafc;font-size:13px}
+table{width:100%;border-collapse:collapse;font-size:12px}th,td{border-bottom:1px solid #e5e7eb;padding:8px;text-align:left;white-space:nowrap}.tableWrap{overflow:auto}
+.invoicePreview{border:1px dashed #b8c2cc;border-radius:12px;padding:14px;background:#fff}
+@media(max-width:700px){.grid,.grid3{grid-template-columns:1fr}.full{grid-column:auto}.summary{grid-template-columns:1fr 1fr}.headerRow{align-items:flex-start}.hdrBtns{flex-direction:column}.metric b{font-size:17px}}
+@media print{header,.nav,.noPrint,#login{display:none!important}body{background:#fff}.card{box-shadow:none;border:0}.section{display:none!important}#invoiceSection.printing{display:block!important}main{max-width:none;padding:0}}
+</style>
+<script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"><\/script>
+<link rel="manifest" href="manifest.json">
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-512.png">
+</head>
+<body><div id="sstStartup" style="position:fixed;inset:0;z-index:999999;background:#031b38;display:flex;align-items:center;justify-content:center;overflow:hidden;width:100vw;height:100dvh;">
+<img src="splash.png" alt="Sri Selvam Tours and Travels Driver App" style="display:block;width:100%;height:100%;object-fit:contain;object-position:center;background:#031b38;">
+</div>
+<script>
+(function(){
+  function removeStartup(){
+    var e=document.getElementById("sstStartup");
+    if(!e) return;
+    e.style.transition="opacity .22s ease";
+    e.style.opacity="0";
+    setTimeout(function(){ if(e && e.parentNode) e.parentNode.removeChild(e); },240);
+  }
+  // Independent fail-safe: runs before the rest of the app JavaScript.
+  window.__sstSplashTimer=setTimeout(removeStartup,1400);
+  window.__removeSSTStartup=removeStartup;
+})();
+</script>
+
+<section id="login">
+  <div class="loginbox">
+    <div class="brand">Sri Selvam Tours and Travels</div>
+    <p id="loginSub">SST Driver Management – Cloud Login</p>
+    <label id="lblLogin">Username / Email</label><input id="email" autocomplete="username" placeholder="username or email">
+    <label id="lblPass" style="margin-top:12px">Password</label><input id="password" type="password" autocomplete="current-password">
+    <button id="loginBtn" class="btn" style="width:100%;margin-top:16px">Login</button>
+    <div id="loginStatus" class="status">Firebase Authentication</div>
+  </div>
+</section>
+
+<section id="app">
+<header>
+  <div class="headerRow">
+    <div><b>Sri Selvam Tours and Travels</b><small id="headerSub">SST Driver Management</small><small style="opacity:.7">Version 4.1</small></div>
+    <div class="hdrBtns"><button id="langBtn" class="btn alt">தமிழ்</button><button id="logoutTop" class="btn danger">Logout</button></div>
+  </div>
+</header>
+<div class="nav noPrint" id="navBar">
+  <button class="btn active" data-sec="entrySection" data-key="entry">Entry</button>
+  <button class="btn" data-sec="historySection" data-key="history">History</button>
+  <button class="btn" data-sec="reportsSection" data-key="reports">Reports</button>
+  <button class="btn" data-sec="passwordSection">Change Password</button>
+  <button class="btn adminOnly" data-sec="driversSection" data-key="drivers">Drivers</button>
+  <button class="btn" data-sec="invoiceSection" data-key="invoice">Invoice / PDF</button>
+</div>
+
+<main>
+<section id="entrySection" class="section active">
+<div class="card">
+  <div class="rowHead"><h3 id="entryTitle">Daily Entry</h3><span id="roleBadge" class="badge"></span></div>
+  <div id="editNotice" class="roleNote" style="display:none;margin-bottom:10px"></div>
+  <div class="grid">
+    <div><label id="lblDriver">Driver Name</label><input id="driver"></div>
+    <div><label id="lblVehicle">Vehicle No.</label><input id="vehicle" placeholder="TN..."></div>
+    <div><label id="lblDate">Date</label><input id="date" type="date"></div>
+    <div><label id="lblSalary">Salary % (Auto)</label><input id="salaryPct" type="number" value="30" readonly></div>
+  </div>
+</div>
+
+<div class="tabs">
+  <button id="localTab" class="btn">Local / Apps</button>
+  <button id="outTab" class="btn off">Outstation</button>
+</div>
+
+<div id="localPanel">
+<div class="card"><h3 id="earnTitle">Earnings</h3><div class="grid">
+  <div><label>Uber ₹</label><input id="uber" type="number" inputmode="decimal"></div>
+  <div><label>Ola ₹</label><input id="ola" type="number" inputmode="decimal"></div>
+  <div><label>Rapido ₹</label><input id="rapido" type="number" inputmode="decimal"></div>
+  <div><label>Namma Yatri ₹</label><input id="namma" type="number" inputmode="decimal"></div>
+  <div class="full"><label id="lblTravels">Travels Local Package ₹</label><input id="travels" type="number" inputmode="decimal"></div>
+</div></div>
+<div class="card"><h3 id="collectTitle">Collection & Expenses</h3><div class="grid">
+  <div><label id="lblCash">Cash Collected ₹</label><input id="cash" type="number" inputmode="decimal"></div>
+  <div><label id="lblPetrol">Petrol ₹</label><input id="petrol" type="number" inputmode="decimal"></div>
+<div><label id="lblCng">CNG ₹</label><input id="cng" type="number" inputmode="decimal"></div>
+  <div class="full"><label id="lblOther">Other Expense ₹</label><input id="other" type="number" inputmode="decimal"></div>
+</div></div>
+</div>
+
+<div id="outPanel" style="display:none">
+<div class="card"><h3 id="outTitle">Outstation Trip</h3><div class="grid">
+  <div class="full"><label id="lblRoute">Trip / Route</label><input id="route"></div>
+  <div><label id="lblTripAmount">Trip Amount ₹</label><input id="tripAmount" type="number" inputmode="decimal"></div>
+  <div><label id="lblOutCash">Cash Collected ₹</label><input id="outCash" type="number" inputmode="decimal"></div>
+  <div><label id="lblBata">Driver Bata / Salary ₹</label><input id="bata" type="number" inputmode="decimal"></div>
+  <div><label id="lblOutFuel">Fuel ₹</label><input id="outFuel" type="number" inputmode="decimal"></div>
+  <div><label>Toll ₹</label><input id="toll" type="number" inputmode="decimal"></div>
+  <div><label>Parking ₹</label><input id="parking" type="number" inputmode="decimal"></div>
+  <div><label>Permit ₹</label><input id="permit" type="number" inputmode="decimal"></div>
+  <div class="full"><label id="lblOutOther">Other ₹</label><input id="outOther" type="number" inputmode="decimal"></div>
+</div></div>
+</div>
+
+<div class="card">
+<h3 id="summaryTitle">Summary</h3>
+<div class="summary">
+  <div class="metric"><span id="mEarn">Total Earnings</span><b id="totalEarn">₹0</b></div>
+  <div class="metric"><span id="mSalary">Driver Salary</span><b id="salary">₹0</b></div>
+  <div class="metric"><span id="mExp">Total Expense</span><b id="totalExp">₹0</b></div>
+  <div class="metric"><span id="mBal">Owner Balance</span><b id="balance" class="good">₹0</b></div>
+</div>
+<div class="actions noPrint" style="margin-top:14px">
+  <button id="save" class="btn">Save Entry</button><button id="cancelEdit" class="btn alt" style="display:none">Cancel Edit</button><button id="share" class="btn alt">Share</button>
+</div>
+<div id="saveStatus" class="status"></div>
+</div>
+</section>
+
+<section id="historySection" class="section">
+<div class="card">
+  <div class="rowHead"><h3 id="historyTitle">Cloud History</h3><button id="refreshHistory" class="btn alt noPrint">Refresh</button></div>
+  <div id="history"><span class="tiny">No entries yet.</span></div>
+</div>
+</section>
+
+<section id="reportsSection" class="section">
+<div class="card">
+  <h3 id="reportsTitle">Daily / Monthly Reports</h3>
+  <div class="grid3">
+    <div><label id="lblReportType">Report Type</label><select id="reportType"><option value="month">Monthly</option><option value="day">Daily</option></select></div>
+    <div id="monthBox"><label id="lblMonth">Month</label><input id="reportMonth" type="month"></div>
+    <div id="dayBox" style="display:none"><label id="lblDay">Date</label><input id="reportDay" type="date"></div>
+    <div class="adminOnly"><label id="lblDriverFilter">Driver Filter</label><select id="driverFilter"><option value="">All Drivers</option></select></div>
+  </div>
+  <div class="actions noPrint" style="margin-top:12px"><button id="runReport" class="btn">Generate Report</button><button id="excelReport" class="btn alt">Excel / CSV</button><button id="pdfReport" class="btn alt">PDF / Print</button></div>
+</div>
+<div class="card">
+  <div class="summary">
+    <div class="metric"><span id="rTripsL">Entries</span><b id="rTrips">0</b></div>
+    <div class="metric"><span id="rEarnL">Earnings</span><b id="rEarn">₹0</b></div>
+    <div class="metric"><span id="rExpL">Expenses</span><b id="rExp">₹0</b></div>
+    <div class="metric"><span id="rBalL">Owner Balance</span><b id="rBal" class="good">₹0</b></div>
+  </div>
+  <div class="tableWrap" style="margin-top:12px"><table><thead><tr><th>Date</th><th>Driver</th><th>Vehicle</th><th>Type</th><th>Earnings</th><th>Salary</th><th>Expense</th><th>Balance</th></tr></thead><tbody id="reportBody"></tbody></table></div>
+</div>
+</section>
+
+
+<section id="passwordSection" class="section">
+<div class="card">
+  <h3>Change My Password</h3>
+  <div class="roleNote">This securely changes the password of the account that is currently logged in. For security, an admin cannot change another driver's password from this single HTML file.</div>
+  <div class="grid" style="margin-top:12px">
+    <div><label>New Password</label><input id="myNewPassword" type="password" placeholder="Minimum 6 characters"></div>
+    <div><label>Confirm New Password</label><input id="myConfirmPassword" type="password" placeholder="Re-enter password"></div>
+  </div>
+  <button id="changeMyPassword" class="btn green" style="margin-top:12px">Change Password</button>
+  <div id="passwordStatus" class="status"></div>
+</div>
+</section>
+
+<section id="driversSection" class="section adminOnly">
+<div class="card">
+  <h3 id="driversTitle">Add Driver Login</h3>
+  <div class="roleNote">Admin creates username + password. Driver can login using that username.</div>
+  <div class="grid" style="margin-top:10px">
+    <div><label id="lblNewName">Driver Name</label><input id="newDriverName"></div>
+    <div><label id="lblUsername">Username</label><input id="newUsername" placeholder="mohanraj"></div>
+    <div><label id="lblNewPass">Password</label><input id="newPassword" type="password" placeholder="Minimum 6 characters"></div>
+    <div><label id="lblNewVehicle">Vehicle No.</label><input id="newVehicle"></div>
+    <div><label id="lblMobile">Mobile No.</label><input id="newMobile" inputmode="tel"></div>
+  </div>
+  <button id="addDriver" class="btn green" style="margin-top:12px">Create Driver</button>
+  <div id="driverStatus" class="status"></div>
+</div>
+<div class="card"><h3 id="driverListTitle">Driver List / Credentials</h3>
+  <div class="roleNote">Admin can edit driver name, vehicle, mobile and deactivate/remove login access. For security, an existing Firebase password cannot be read back. To replace login credentials, create a new username/password and deactivate the old login.</div>
+  <div id="driverList" style="margin-top:10px"><span class="tiny">Loading...</span></div>
+</div>
+
+<div class="card" id="editDriverCard" style="display:none">
+  <h3>Edit Driver</h3>
+  <input type="hidden" id="editDriverUid">
+  <div class="grid">
+    <div><label>Driver Name</label><input id="editDriverName"></div>
+    <div><label>Username</label><input id="editUsername" readonly></div>
+    <div><label>Vehicle No.</label><input id="editDriverVehicle"></div>
+    <div><label>Mobile No.</label><input id="editDriverMobile"></div>
+    <div><label>Status</label><select id="editDriverActive"><option value="true">Active</option><option value="false">Inactive</option></select></div>
+  </div>
+  <div class="actions" style="margin-top:12px">
+    <button id="saveDriverEdit" class="btn green">Save Changes</button>
+    <button id="cancelDriverEdit" class="btn alt">Cancel</button>
+  </div>
+  <div id="editDriverStatus" class="status"></div>
+</div>
+</section>
+
+<section id="invoiceSection" class="section">
+<div class="card noPrint">
+  <div class="rowHead"><div><h3>Professional Customer Invoice</h3><div class="tiny">Outstation · Local Package · Airport / City Transfer</div></div><span class="badge">SST</span></div>
+  <div class="tabs" style="margin-top:14px">
+    <button id="billOutTab" class="btn">Outstation</button>
+    <button id="billLocalTab" class="btn off">Local Package</button>
+    <button id="billTransferTab" class="btn off">Airport / City Transfer</button>
+  </div>
+
+  <h3 style="margin-top:15px">Customer & Trip Details</h3>
+  <div class="grid">
+    <div><label>Document Type</label><select id="invType"><option>Invoice</option><option>Quotation</option></select></div>
+    <div><label>Invoice / Quote No.</label><input id="invNo"></div>
+    <div><label>Invoice Date</label><input id="invDate" type="date"></div>
+    <div><label>Customer Mobile</label><input id="custMobile" inputmode="tel"></div>
+    <div class="full"><label>Customer / Company Name</label><input id="custName"></div>
+    <div class="full"><label>Billing Address</label><textarea id="custAddress" rows="3"></textarea></div>
+    <div><label>From</label><input id="invFrom"></div>
+    <div><label>To / Destination</label><input id="invTo"></div>
+    <div><label>Vehicle No.</label><input id="invVehicleNo"></div>
+    <div><label>Vehicle Type</label><input id="invVehicleType" placeholder="Sedan / Innova / Tempo Traveller"></div>
+    <div><label>Driver Name</label><input id="invDriver"></div>
+    <div><label>Destination / Poster Title</label><input id="posterDestination" placeholder="Madurai / Bangalore / Airport"></div>
+    <div><label>Vehicle Photo (optional)</label><input id="posterVehiclePhoto" type="file" accept="image/*"></div>
+    <div><label>Destination Photo (optional)</label><input id="posterDestinationPhoto" type="file" accept="image/*"></div>
+    <div><label>Pickup Date & Time *</label><input id="pickupDT" type="datetime-local"></div>
+    <div><label>Drop Date & Time *</label><input id="dropDT" type="datetime-local"></div>
+  </div>
+
+  <div id="billOutPanel" style="margin-top:18px">
+    <h3>Outstation Charges</h3>
+    <div class="grid">
+      <div class="full"><label>Description</label><input id="outDesc" value="Outstation KM"></div>
+      <div><label>Total KM / Quantity</label><input id="outKm" type="number" inputmode="decimal"></div>
+      <div><label>Per KM Rate ₹</label><input id="outKmRate" type="number" inputmode="decimal"></div>
+      <div><label>Driver Bata ₹</label><input id="billBata" type="number"></div>
+      <div><label>Toll ₹</label><input id="billToll" type="number"></div>
+      <div><label>Parking ₹</label><input id="billParking" type="number"></div>
+      <div><label>Interstate Permit ₹</label><input id="billPermit" type="number"></div>
+      <div><label>Other Charges ₹</label><input id="billOther" type="number"></div>
+    </div>
+  </div>
+
+  <div id="billLocalPanel" style="display:none;margin-top:18px">
+    <h3>Local Package Charges</h3>
+    <div class="grid">
+      <div class="full"><label>Package Description</label><input id="localDesc" placeholder="12 Hours / 120 KM Local Package"></div>
+      <div><label>Package Hours</label><input id="pkgHours" type="number"></div>
+      <div><label>Included KM</label><input id="pkgKm" type="number"></div>
+      <div><label>Package Rate ₹</label><input id="pkgRate" type="number"></div>
+      <div><label>Additional Hours</label><input id="addHours" type="number"></div>
+      <div><label>Additional Hour Rate ₹</label><input id="addHourRate" type="number"></div>
+      <div><label>Additional KM</label><input id="addKm" type="number"></div>
+      <div><label>Additional KM Rate ₹</label><input id="addKmRate" type="number"></div>
+      <div><label>Driver Bata ₹</label><input id="localBata" type="number"></div>
+      <div><label>Toll ₹</label><input id="localToll" type="number"></div>
+      <div><label>Parking ₹</label><input id="localParking" type="number"></div>
+      <div><label>Other Charges ₹</label><input id="localOther" type="number"></div>
+    </div>
+  </div>
+
+  <div id="billTransferPanel" style="display:none;margin-top:18px">
+    <h3>Airport / City Transfer Charges</h3>
+    <div class="grid">
+      <div><label>Transfer Type</label><select id="transferType"><option>Airport Pickup</option><option>Airport Drop</option><option>City Transfer</option></select></div>
+      <div><label>Description</label><input id="transferDesc" placeholder="Airport Transfer"></div>
+      <div><label>Distance KM</label><input id="transferKm" type="number"></div>
+      <div><label>Per KM Rate ₹ (optional)</label><input id="transferKmRate" type="number"></div>
+      <div><label>Fixed Transfer Fare ₹</label><input id="transferFare" type="number"></div>
+      <div><label>Toll ₹</label><input id="transferToll" type="number"></div>
+      <div><label>Parking ₹</label><input id="transferParking" type="number"></div>
+      <div><label>Other Charges ₹</label><input id="transferOther" type="number"></div>
+    </div>
+  </div>
+
+  <div class="grid" style="margin-top:18px">
+    <div><label>Advance ₹</label><input id="invAdvance" type="number"></div>
+    <div><label>Notes</label><input id="invNotes" placeholder="Toll/Parking extra, payment terms, etc."></div>
+  </div>
+  <div class="actions" style="margin-top:14px">
+    <button id="previewInv" class="btn">Preview</button>
+    <button id="saveInv" class="btn alt">Save to Cloud</button>
+    <button id="printInv" class="btn gold">PDF / Print</button>
+    <button id="shareInv" class="btn green">Share</button><button id="downloadInvImage" class="btn gold">Download Image</button>
+  </div>
+  <div id="invStatus" class="status"></div>
+</div>
+<div class="card invoicePreview" id="invoicePreview" style="padding:0;overflow:hidden;background:#fff"></div>
+</section>
+</main>
+</section>
+
+<script>
+const FIREBASE_API_KEY="AIzaSyCw38laQh6qAgGfm0DN8ACcgNxPVtmZUVE";
+const FIREBASE_PROJECT_ID="sst-driver-app";
+const FB_BASE=`https://firestore.googleapis.com/v1/projects/${FIREBASE_PROJECT_ID}/databases/(default)/documents`;
+let mode="local", currentUser=null, idToken=null, userProfile={role:"driver"}, editing=null, cachedEntries=[], cachedDrivers=[], reportRows=[], lang="en";
+const $=id=>document.getElementById(id), num=id=>Number($(id)?.value||0), money=n=>"₹"+Math.round(Number(n)||0).toLocaleString("en-IN"), today=()=>new Date().toISOString().slice(0,10);
+$("date").value=today(); $("reportDay").value=today(); $("reportMonth").value=today().slice(0,7); $("invNo").value="SST-"+today().replaceAll("-","")+"-001"; $("invDate").value=today();
+
+const T={
+en:{entry:"Entry",history:"History",reports:"Reports",drivers:"Drivers",invoice:"Invoice / PDF",header:"SST Driver Management",loginSub:"SST Driver Management – Cloud Login",login:"Username / Email",pass:"Password",driver:"Driver Name",vehicle:"Vehicle No.",date:"Date",salary:"Salary % (Auto)",earn:"Earnings",travels:"Travels Local Package ₹",collect:"Collection & Expenses",cash:"Cash Collected ₹",petrol:"Petrol ₹",cng:"CNG ₹",other:"Other Expense ₹",out:"Outstation Trip",route:"Trip / Route",tripAmt:"Trip Amount ₹",bata:"Driver Bata / Salary ₹",outFuel:"Fuel ₹",summary:"Summary",mEarn:"Total Earnings",mSalary:"Driver Salary",mExp:"Total Expense",mBal:"Owner Balance",save:"Save Entry",share:"Share",hist:"Cloud History",refresh:"Refresh",rep:"Daily / Monthly Reports",rtype:"Report Type",month:"Month",day:"Date",dfilter:"Driver Filter",gen:"Generate Report",excel:"Excel / CSV",pdf:"PDF / Print",entries:"Entries",driversTitle:"Add Driver Login",newName:"Driver Name",username:"Username",newPass:"Password",newVehicle:"Vehicle No.",mobile:"Mobile No.",create:"Create Driver",driverList:"Driver List",invoiceTitle:"Customer Invoice / Quotation",docType:"Document Type",invNo:"Invoice / Quote No.",cust:"Customer Name",custMob:"Customer Mobile",trip:"Trip Details / Route",vehType:"Vehicle Type",coverage:"KM / Coverage",hire:"Vehicle Hire ₹",invBata:"Driver Bata ₹",permit:"Permit / Other ₹",advance:"Advance ₹",notes:"Notes",preview:"Preview",saveInv:"Save Invoice",cancel:"Cancel Edit"},
+ta:{entry:"பதிவு",history:"வரலாறு",reports:"அறிக்கைகள்",drivers:"ஓட்டுநர்கள்",invoice:"பில் / PDF",header:"SST ஓட்டுநர் நிர்வாகம்",loginSub:"SST ஓட்டுநர் நிர்வாகம் – Cloud Login",login:"Username / Email",pass:"Password",driver:"ஓட்டுநர் பெயர்",vehicle:"வாகன எண்",date:"தேதி",salary:"சம்பள % (Auto)",earn:"வருமானம்",travels:"Travels Local Package ₹",collect:"வசூல் & செலவுகள்",cash:"Driver வசூல் செய்த Cash ₹",petrol:"Petrol ₹",cng:"CNG ₹",other:"மற்ற செலவு ₹",out:"Outstation Trip",route:"Trip / Route",tripAmt:"Trip Amount ₹",bata:"Driver Bata / Salary ₹",outFuel:"Fuel ₹",summary:"சுருக்கம்",mEarn:"மொத்த வருமானம்",mSalary:"ஓட்டுநர் சம்பளம்",mExp:"மொத்த செலவு",mBal:"Owner Balance",save:"பதிவை சேமி",share:"பகிர்",hist:"Cloud வரலாறு",refresh:"Refresh",rep:"தினசரி / மாத அறிக்கைகள்",rtype:"Report வகை",month:"மாதம்",day:"தேதி",dfilter:"Driver Filter",gen:"Report உருவாக்கு",excel:"Excel / CSV",pdf:"PDF / Print",entries:"பதிவுகள்",driversTitle:"Driver Login உருவாக்கு",newName:"ஓட்டுநர் பெயர்",username:"Username",newPass:"Password",newVehicle:"வாகன எண்",mobile:"மொபைல் எண்",create:"Driver உருவாக்கு",driverList:"Driver பட்டியல்",invoiceTitle:"Customer Invoice / Quotation",docType:"Document Type",invNo:"Invoice / Quote No.",cust:"Customer பெயர்",custMob:"Customer Mobile",trip:"Trip Details / Route",vehType:"Vehicle Type",coverage:"KM / Coverage",hire:"Vehicle Hire ₹",invBata:"Driver Bata ₹",permit:"Permit / Other ₹",advance:"Advance ₹",notes:"குறிப்பு",preview:"Preview",saveInv:"Invoice சேமி",cancel:"Edit ரத்து"}
+};
+
+function applyLang(){
+ const x=T[lang]; document.documentElement.lang=lang==="ta"?"ta":"en";
+ $("langBtn").textContent=lang==="en"?"தமிழ்":"English"; $("headerSub").textContent=x.header; $("loginSub").textContent=x.loginSub; $("lblLogin").textContent=x.login; $("lblPass").textContent=x.pass;
+ const map={lblDriver:"driver",lblVehicle:"vehicle",lblDate:"date",lblSalary:"salary",earnTitle:"earn",lblTravels:"travels",collectTitle:"collect",lblCash:"cash",lblPetrol:"petrol",lblCng:"cng",lblOther:"other",outTitle:"out",lblRoute:"route",lblTripAmount:"tripAmt",lblOutCash:"cash",lblBata:"bata",lblOutFuel:"outFuel",lblOutOther:"other",summaryTitle:"summary",mEarn:"mEarn",mSalary:"mSalary",mExp:"mExp",mBal:"mBal",historyTitle:"hist",reportsTitle:"rep",lblReportType:"rtype",lblMonth:"month",lblDay:"day",lblDriverFilter:"dfilter",rTripsL:"entries",rEarnL:"mEarn",rExpL:"mExp",rBalL:"mBal",driversTitle:"driversTitle",lblNewName:"newName",lblUsername:"username",lblNewPass:"newPass",lblNewVehicle:"newVehicle",lblMobile:"mobile",driverListTitle:"driverList",invoiceTitle:"invoiceTitle",lblDocType:"docType",lblInvNo:"invNo",lblCust:"cust",lblCustMob:"custMob",lblTrip:"trip",lblVehType:"vehType",lblCoverage:"coverage",lblHire:"hire",lblInvBata:"invBata",lblPermit:"permit",lblAdvance:"advance",lblNotes:"notes"};
+ Object.entries(map).forEach(([id,k])=>{if($(id))$(id).textContent=x[k]});
+ $("save").textContent=editing?(lang==="ta"?"Update சேமி":"Update Entry"):x.save; $("share").textContent=x.share; $("refreshHistory").textContent=x.refresh; $("runReport").textContent=x.gen; $("excelReport").textContent=x.excel; $("pdfReport").textContent=x.pdf; $("addDriver").textContent=x.create; $("previewInv").textContent=x.preview; $("saveInv").textContent=x.saveInv; $("printInv").textContent=x.pdf; $("cancelEdit").textContent=x.cancel;
+ document.querySelectorAll("#navBar button").forEach(b=>{const k=b.dataset.key;if(k&&x[k])b.textContent=x[k]});
+ localStorage.setItem("sstLang",lang);
+}
+lang=localStorage.getItem("sstLang")||"en"; applyLang(); $("langBtn").onclick=()=>{lang=lang==="en"?"ta":"en";applyLang()};
+
+function setStatus(id,t,bad=false){$(id).textContent=t;$(id).style.color=bad?"#b91c1c":"#166534"}
+function normLogin(v){v=v.trim().toLowerCase();return v.includes("@")?v:v.replace(/[^a-z0-9._-]/g,"")+"@sstdriver.app"}
+async function authLogin(login,password){const r=await fetch(`https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=${encodeURIComponent(FIREBASE_API_KEY)}`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({email:normLogin(login),password,returnSecureToken:true})});const d=await r.json();if(!r.ok)throw new Error(d?.error?.message||"LOGIN_FAILED");return d}
+async function authCreate(username,password){const email=normLogin(username);const r=await fetch(`https://identitytoolkit.googleapis.com/v1/accounts:signUp?key=${encodeURIComponent(FIREBASE_API_KEY)}`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({email,password,returnSecureToken:true})});const d=await r.json();if(!r.ok)throw new Error(d?.error?.message||"CREATE_FAILED");return {...d,email}}
+async function changeOwnPassword(newPassword){
+  const r=await fetch(`https://identitytoolkit.googleapis.com/v1/accounts:update?key=${encodeURIComponent(FIREBASE_API_KEY)}`,{
+    method:"POST",
+    headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({idToken,password:newPassword,returnSecureToken:true})
+  });
+  const d=await r.json();
+  if(!r.ok) throw new Error(d?.error?.message||"PASSWORD_UPDATE_FAILED");
+  if(d.idToken) idToken=d.idToken;
+  return d;
+}
+
+function enc(v){if(typeof v==="number")return{doubleValue:v};if(typeof v==="boolean")return{booleanValue:v};if(v===null||v===undefined)return{nullValue:null};return{stringValue:String(v)}}
+function encodeFields(o){const fields={};for(const[k,v]of Object.entries(o))fields[k]=enc(v);return{fields}}
+function decodeFields(fields={}){const o={};for(const[k,v]of Object.entries(fields)){if("stringValue"in v)o[k]=v.stringValue;else if("integerValue"in v)o[k]=Number(v.integerValue);else if("doubleValue"in v)o[k]=Number(v.doubleValue);else if("booleanValue"in v)o[k]=v.booleanValue;else if("timestampValue"in v)o[k]=v.timestampValue;else o[k]=null}return o}
+function docId(name){return name.split("/").pop()}
+async function fsGet(path){const r=await fetch(`${FB_BASE}/${path}`,{headers:{Authorization:`Bearer ${idToken}`}});if(r.status===404)return null;const d=await r.json();if(!r.ok)throw new Error(d?.error?.message||"READ_FAILED");return {...decodeFields(d.fields),__id:docId(d.name)}}
+async function fsSet(path,obj){const r=await fetch(`${FB_BASE}/${path}`,{method:"PATCH",headers:{"Content-Type":"application/json",Authorization:`Bearer ${idToken}`},body:JSON.stringify(encodeFields(obj))});const d=await r.json();if(!r.ok)throw new Error(d?.error?.message||"WRITE_FAILED");return d}
+async function fsAdd(col,obj){const r=await fetch(`${FB_BASE}/${col}`,{method:"POST",headers:{"Content-Type":"application/json",Authorization:`Bearer ${idToken}`},body:JSON.stringify(encodeFields(obj))});const d=await r.json();if(!r.ok)throw new Error(d?.error?.message||"WRITE_FAILED");return d}
+async function fsPatch(col,id,obj){const r=await fetch(`${FB_BASE}/${col}/${id}`,{method:"PATCH",headers:{"Content-Type":"application/json",Authorization:`Bearer ${idToken}`},body:JSON.stringify(encodeFields(obj))});const d=await r.json();if(!r.ok)throw new Error(d?.error?.message||"UPDATE_FAILED");return d}
+async function fsDelete(col,id){const r=await fetch(`${FB_BASE}/${col}/${id}`,{method:"DELETE",headers:{Authorization:`Bearer ${idToken}`}});if(!r.ok){let d={};try{d=await r.json()}catch{}throw new Error(d?.error?.message||"DELETE_FAILED")}}
+async function fsQuery(col,uidOnly=false,limit=500){const q={from:[{collectionId:col}],limit};if(uidOnly)q.where={fieldFilter:{field:{fieldPath:"driverUid"},op:"EQUAL",value:{stringValue:currentUser.uid}}};const r=await fetch(`${FB_BASE}:runQuery`,{method:"POST",headers:{"Content-Type":"application/json",Authorization:`Bearer ${idToken}`},body:JSON.stringify({structuredQuery:q})});const d=await r.json();if(!r.ok)throw new Error(d?.error?.message||"QUERY_FAILED");return d.filter(x=>x.document).map(x=>({...decodeFields(x.document.fields),__id:docId(x.document.name)}))}
+async function fsQueryUsers(){const q={from:[{collectionId:"users"}],limit:200};const r=await fetch(`${FB_BASE}:runQuery`,{method:"POST",headers:{"Content-Type":"application/json",Authorization:`Bearer ${idToken}`},body:JSON.stringify({structuredQuery:q})});const d=await r.json();if(!r.ok)throw new Error(d?.error?.message||"USER_QUERY_FAILED");return d.filter(x=>x.document).map(x=>({...decodeFields(x.document.fields),__id:docId(x.document.name)}))}
+
+$("loginBtn").onclick=async()=>{const b=$("loginBtn");try{if(!$("email").value.trim()||!$("password").value)return setStatus("loginStatus","Username/Email & Password enter pannunga.",true);b.disabled=true;b.textContent="Signing in...";const d=await authLogin($("email").value,$("password").value);idToken=d.idToken;currentUser={uid:d.localId,email:d.email};userProfile=await fsGet(`users/${currentUser.uid}`);
+if(!userProfile) throw new Error("User profile not found. Contact admin.");
+if(userProfile.active===false) throw new Error("This driver login is inactive. Contact admin.");
+$("login").style.display="none";$("app").style.display="block";setupRole();await refreshAll()}catch(e){setStatus("loginStatus","Login failed: "+e.message,true);b.disabled=false;b.textContent="Login"}}
+function logout(){sessionStorage.clear();currentUser=null;idToken=null;userProfile={role:"driver"};$("app").style.display="none";$("login").style.display="flex";$("password").value="";$("loginBtn").disabled=false;$("loginBtn").textContent="Login";setStatus("loginStatus","Firebase Authentication")}
+$("logoutTop").onclick=logout;
+
+function setupRole(){const admin=userProfile.role==="admin";document.querySelectorAll(".adminOnly").forEach(x=>x.style.display=admin?"":"none");$("roleBadge").textContent=admin?"ADMIN":"DRIVER";$("roleBadge").className="badge "+(admin?"admin":"driver");if(!admin){$("driver").value=userProfile.name||"";$("vehicle").value=userProfile.vehicleNo||"";$("driver").readOnly=true;$("vehicle").readOnly=true}else{$("driver").readOnly=false;$("vehicle").readOnly=false}}
+document.querySelectorAll("#navBar button").forEach(b=>b.onclick=()=>{document.querySelectorAll("#navBar button").forEach(x=>x.classList.remove("active"));b.classList.add("active");document.querySelectorAll(".section").forEach(x=>x.classList.remove("active"));$(b.dataset.sec).classList.add("active");if(b.dataset.sec==="invoiceSection")previewInvoice()});
+
+function tab(m){mode=m;$("localPanel").style.display=m==="local"?"block":"none";$("outPanel").style.display=m==="out"?"block":"none";$("localTab").className="btn "+(m==="local"?"":"off");$("outTab").className="btn "+(m==="out"?"":"off");calc()}
+$("localTab").onclick=()=>tab("local");$("outTab").onclick=()=>tab("out");
+function calc(){let earn,sal,exp,bal;if(mode==="local"){earn=["uber","ola","rapido","namma","travels"].reduce((a,x)=>a+num(x),0);const p=earn>=5000?40:(earn>=4000?35:30);$("salaryPct").value=p;sal=Math.round(earn*p/100);exp=sal+num("petrol")+num("cng")+num("other");bal=num("cash")-exp}else{earn=num("tripAmount");sal=num("bata");exp=sal+num("outFuel")+num("toll")+num("parking")+num("permit")+num("outOther");bal=num("outCash")-exp}$("totalEarn").textContent=money(earn);$("salary").textContent=money(sal);$("totalExp").textContent=money(exp);$("balance").textContent=money(bal);$("balance").className=bal<0?"bad":"good";return{earn,sal,exp,bal}}
+document.querySelectorAll("#entrySection input").forEach(x=>x.addEventListener("input",calc));
+function commonEntry(c){return{driverUid:editing?.original?.driverUid||currentUser.uid,driverName:$("driver").value.trim(),vehicleNo:$("vehicle").value.trim().toUpperCase(),date:$("date").value,totalEarnings:c.earn,driverSalary:c.sal,totalExpense:c.exp,ownerBalance:c.bal,updatedAt:new Date().toISOString()}}
+function buildEntry(){const c=calc(),base=commonEntry(c);if(mode==="local")return{...base,uber:num("uber"),ola:num("ola"),rapido:num("rapido"),nammaYatri:num("namma"),travelsLocal:num("travels"),cashCollection:num("cash"),petrol:num("petrol"),cng:num("cng"),fuel:num("petrol")+num("cng"),otherExpense:num("other"),salaryPercent:num("salaryPct")};return{...base,route:$("route").value.trim(),tripAmount:num("tripAmount"),cashCollection:num("outCash"),bata:num("bata"),fuel:num("outFuel"),toll:num("toll"),parking:num("parking"),permit:num("permit"),otherExpense:num("outOther")}}
+function clearEntry(){["uber","ola","rapido","namma","travels","cash","petrol","cng","other","route","tripAmount","outCash","bata","outFuel","toll","parking","permit","outOther"].forEach(id=>$(id).value="");$("date").value=today();if(userProfile.role!=="driver"){ $("driver").value=""; $("vehicle").value=""}calc()}
+$("save").onclick=async()=>{if(!currentUser)return;const b=$("save");try{if(!$("driver").value.trim()||!$("vehicle").value.trim()||!$("date").value)throw new Error("Driver, Vehicle, Date required");b.disabled=true;b.textContent="Saving...";const obj=buildEntry();if(editing){await fsPatch(editing.collection,editing.id,{...obj,editedBy:currentUser.uid,lastEditedAt:new Date().toISOString()});setStatus("saveStatus","Cloud entry updated successfully ✓");editing=null;$("editNotice").style.display="none";$("cancelEdit").style.display="none"}else{obj.createdAt=new Date().toISOString();await fsAdd(mode==="local"?"daily_accounts":"outstation_accounts",obj);setStatus("saveStatus","Cloud saved successfully ✓")}applyLang();clearEntry();await refreshAll()}catch(e){setStatus("saveStatus","Save failed: "+e.message,true)}finally{b.disabled=false;applyLang()}}
+$("cancelEdit").onclick=()=>{editing=null;$("editNotice").style.display="none";$("cancelEdit").style.display="none";clearEntry();applyLang()};
+$("share").onclick=async()=>{const x=buildEntry();let txt=`SST DRIVER ACCOUNT\nDate: ${x.date}\nDriver: ${x.driverName}\nVehicle: ${x.vehicleNo}\nType: ${mode==="local"?"Local / Apps":"Outstation"}\nTotal Earnings: ${money(x.totalEarnings)}\nDriver Salary: ${money(x.driverSalary)}`;if(mode==="local"){txt+=`\nPetrol Expense: ${money(x.petrol||0)}\nCNG Expense: ${money(x.cng||0)}`}else{txt+=`\nFuel Expense: ${money(x.fuel||0)}`}txt+=`\nOther Expense: ${money(x.otherExpense||0)}\nTotal Expense: ${money(x.totalExpense)}\nOwner Balance: ${money(x.ownerBalance)}`;if(navigator.share)await navigator.share({text:txt});else{await navigator.clipboard.writeText(txt);setStatus("saveStatus","Account copied ✓")}}
+
+async function loadEntries(){const admin=userProfile.role==="admin";const [a,b]=await Promise.all([fsQuery("daily_accounts",!admin),fsQuery("outstation_accounts",!admin)]);cachedEntries=[...a.map(x=>({...x,__collection:"daily_accounts",__mode:"local"})),...b.map(x=>({...x,__collection:"outstation_accounts",__mode:"out"}))].sort((x,y)=>String(y.date||"").localeCompare(String(x.date||""))||String(y.createdAt||"").localeCompare(String(x.createdAt||"")));return cachedEntries}
+function historyHtml(x){const admin=userProfile.role==="admin";const fuelLine=x.__mode==="local"?` · Petrol ${money(x.petrol!=null?x.petrol:(x.fuel||0))} · CNG ${money(x.cng||0)}`:` · Fuel ${money(x.fuel||0)}`;return `<div class="row"><div class="rowHead"><div><b>${x.date||"-"} · ${x.__mode==="local"?"Local / Apps":"Outstation"}</b><div>${x.vehicleNo||""}${x.route?" · "+x.route:""}</div><div class="tiny">${x.driverName?x.driverName+" · ":""}Earnings ${money(x.totalEarnings)} · Salary ${money(x.driverSalary)}${fuelLine} · Expense ${money(x.totalExpense)} · Owner Balance ${money(x.ownerBalance)}</div></div>${admin?`<div class="rowActions"><button class="btn alt" onclick="editEntry('${x.__collection}','${x.__id}')">Edit</button><button class="btn danger" onclick="deleteEntry('${x.__collection}','${x.__id}')">Delete</button></div>`:""}</div></div>`}
+async function renderHistory(){try{$("history").innerHTML='<span class="tiny">Loading cloud history...</span>';await loadEntries();$("history").innerHTML=cachedEntries.length?cachedEntries.slice(0,100).map(historyHtml).join(""):'<span class="tiny">No cloud entries yet.</span>'}catch(e){$("history").innerHTML=`<span class="tiny">History load failed: ${e.message}</span>`}}
+$("refreshHistory").onclick=renderHistory;
+window.editEntry=(col,id)=>{const x=cachedEntries.find(e=>e.__collection===col&&e.__id===id);if(!x)return;editing={collection:col,id,original:x};mode=x.__mode;tab(mode);$("driver").value=x.driverName||"";$("vehicle").value=x.vehicleNo||"";$("date").value=x.date||today();if(mode==="local"){$("uber").value=x.uber||"";$("ola").value=x.ola||"";$("rapido").value=x.rapido||"";$("namma").value=x.nammaYatri||"";$("travels").value=x.travelsLocal||"";$("cash").value=x.cashCollection||"";$("petrol").value=(x.petrol!=null?x.petrol:(x.fuel||""));$("cng").value=x.cng||"";$("other").value=x.otherExpense||""}else{$("route").value=x.route||"";$("tripAmount").value=x.tripAmount||x.totalEarnings||"";$("outCash").value=x.cashCollection||"";$("bata").value=x.bata||x.driverSalary||"";$("outFuel").value=x.fuel||"";$("toll").value=x.toll||"";$("parking").value=x.parking||"";$("permit").value=x.permit||"";$("outOther").value=x.otherExpense||""}calc();$("editNotice").textContent="Editing cloud entry. Save Entry will update this record.";$("editNotice").style.display="block";$("cancelEdit").style.display="inline-block";document.querySelector('[data-sec="entrySection"]').click();applyLang();window.scrollTo({top:0,behavior:"smooth"})}
+window.deleteEntry=async(col,id)=>{if(!confirm("Delete this cloud entry permanently?"))return;try{await fsDelete(col,id);await refreshAll()}catch(e){alert("Delete failed: "+e.message)}}
+
+async function loadDrivers(){if(userProfile.role!=="admin")return;try{cachedDrivers=(await fsQueryUsers()).filter(x=>x.role==="driver");$("driverList").innerHTML=cachedDrivers.length?cachedDrivers.map(d=>`<div class="row"><div class="rowHead"><div><b>${d.name||d.username||d.email||"Driver"}</b><div>${d.vehicleNo||""}${d.mobile?" · "+d.mobile:""}</div><div class="tiny">Username: ${d.username||String(d.email||"").split("@")[0]} · Status: ${d.active===false?"Inactive":"Active"}</div></div><div class="rowActions"><button class="btn alt" onclick="openDriverEdit('${d.__id}')">Edit</button><button class="btn ${d.active===false?"green":"danger"}" onclick="toggleDriver('${d.__id}',${d.active===false?"true":"false"})">${d.active===false?"Enable":"Remove / Disable"}</button></div></div></div>`).join(""):'<span class="tiny">No drivers added yet.</span>';$("driverFilter").innerHTML='<option value="">All Drivers</option>'+cachedDrivers.map(d=>`<option value="${d.__id}">${d.name||d.username||d.__id}</option>`).join("")}catch(e){$("driverList").innerHTML=`<span class="tiny">Driver list failed: ${e.message}</span>`}}
+$("addDriver").onclick=async()=>{try{const name=$("newDriverName").value.trim(),username=$("newUsername").value.trim().toLowerCase(),password=$("newPassword").value,vehicle=$("newVehicle").value.trim().toUpperCase(),mobile=$("newMobile").value.trim();if(!name||!username||password.length<6)throw new Error("Name, username and minimum 6-character password required");setStatus("driverStatus","Creating Firebase login...");const a=await authCreate(username,password);await fsSet(`users/${a.localId}`,{email:a.email,username,name,role:"driver",vehicleNo:vehicle,mobile,active:true,createdBy:currentUser.uid,createdAt:new Date().toISOString()});setStatus("driverStatus",`Driver created ✓  Username: ${username}`);["newDriverName","newUsername","newPassword","newVehicle","newMobile"].forEach(id=>$(id).value="");await loadDrivers()}catch(e){setStatus("driverStatus","Create failed: "+e.message,true)}}
+window.openDriverEdit=(uid)=>{const d=cachedDrivers.find(x=>x.__id===uid);if(!d)return;$("editDriverUid").value=uid;$("editDriverName").value=d.name||"";$("editUsername").value=d.username||String(d.email||"").split("@")[0];$("editDriverVehicle").value=d.vehicleNo||"";$("editDriverMobile").value=d.mobile||"";$("editDriverActive").value=d.active===false?"false":"true";$("editDriverCard").style.display="block";$("editDriverStatus").textContent="";$("editDriverCard").scrollIntoView({behavior:"smooth",block:"start"})}
+$("cancelDriverEdit").onclick=()=>{$("editDriverCard").style.display="none";$("editDriverUid").value=""}
+$("saveDriverEdit").onclick=async()=>{try{const uid=$("editDriverUid").value;if(!uid)throw new Error("Driver not selected");const old=cachedDrivers.find(x=>x.__id===uid);if(!old)throw new Error("Driver not found");await fsSet(`users/${uid}`,{email:old.email||normLogin(old.username||$("editUsername").value),username:old.username||$("editUsername").value,name:$("editDriverName").value.trim(),role:"driver",vehicleNo:$("editDriverVehicle").value.trim().toUpperCase(),mobile:$("editDriverMobile").value.trim(),active:$("editDriverActive").value==="true",createdBy:old.createdBy||currentUser.uid,createdAt:old.createdAt||new Date().toISOString(),updatedAt:new Date().toISOString(),updatedBy:currentUser.uid});setStatus("editDriverStatus","Driver details updated ✓");await loadDrivers();setTimeout(()=>$("editDriverCard").style.display="none",500)}catch(e){setStatus("editDriverStatus","Update failed: "+e.message,true)}}
+window.toggleDriver=async(uid,active)=>{try{const d=cachedDrivers.find(x=>x.__id===uid);if(!d)return;if(!confirm(active?"Enable this driver login?":"Remove/disable this driver login access?"))return;await fsSet(`users/${uid}`,{email:d.email||normLogin(d.username||""),username:d.username||String(d.email||"").split("@")[0],name:d.name||"",role:"driver",vehicleNo:d.vehicleNo||"",mobile:d.mobile||"",active:!!active,createdBy:d.createdBy||currentUser.uid,createdAt:d.createdAt||new Date().toISOString(),updatedAt:new Date().toISOString(),updatedBy:currentUser.uid});await loadDrivers()}catch(e){alert("Driver status update failed: "+e.message)}}
+
+
+$("changeMyPassword").onclick=async()=>{
+  try{
+    const p=$("myNewPassword").value, c=$("myConfirmPassword").value;
+    if(p.length<6) throw new Error("Password minimum 6 characters irukanum.");
+    if(p!==c) throw new Error("Confirm password match aagala.");
+    $("changeMyPassword").disabled=true;
+    $("changeMyPassword").textContent="Changing...";
+    await changeOwnPassword(p);
+    $("myNewPassword").value="";
+    $("myConfirmPassword").value="";
+    setStatus("passwordStatus","Password changed successfully ✓");
+  }catch(e){
+    setStatus("passwordStatus","Password change failed: "+e.message,true);
+  }finally{
+    $("changeMyPassword").disabled=false;
+    $("changeMyPassword").textContent="Change Password";
+  }
+};
+
+$("reportType").onchange=()=>{$("monthBox").style.display=$("reportType").value==="month"?"block":"none";$("dayBox").style.display=$("reportType").value==="day"?"block":"none"};
+function filterReport(){const typ=$("reportType").value,key=typ==="month"?$("reportMonth").value:$("reportDay").value,drv=userProfile.role==="admin"?$("driverFilter").value:"";reportRows=cachedEntries.filter(x=>(typ==="month"?String(x.date||"").startsWith(key):x.date===key)&&(!drv||x.driverUid===drv));const sums=reportRows.reduce((a,x)=>{a.e+=Number(x.totalEarnings||0);a.s+=Number(x.driverSalary||0);a.x+=Number(x.totalExpense||0);a.b+=Number(x.ownerBalance||0);return a},{e:0,s:0,x:0,b:0});$("rTrips").textContent=reportRows.length;$("rEarn").textContent=money(sums.e);$("rExp").textContent=money(sums.x);$("rBal").textContent=money(sums.b);$("reportBody").innerHTML=reportRows.map(x=>`<tr><td>${x.date||""}</td><td>${x.driverName||""}</td><td>${x.vehicleNo||""}</td><td>${x.__mode==="local"?"Local":"Outstation"}</td><td>${money(x.totalEarnings)}</td><td>${money(x.driverSalary)}</td><td>${money(x.totalExpense)}</td><td>${money(x.ownerBalance)}</td></tr>`).join("")||'<tr><td colspan="8">No entries</td></tr>'}
+$("runReport").onclick=async()=>{if(!cachedEntries.length)await loadEntries();filterReport()}
+function download(name,text,type="text/plain"){const a=document.createElement("a");a.href=URL.createObjectURL(new Blob([text],{type}));a.download=name;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},1000)}
+$("excelReport").onclick=async()=>{if(!reportRows.length)filterReport();const rows=[["Date","Driver","Vehicle","Type","Earnings","Driver Salary","Petrol","CNG","Other Expense","Expense","Owner Balance"],...reportRows.map(x=>[x.date,x.driverName,x.vehicleNo,x.__mode,x.totalEarnings,x.driverSalary,x.__mode==="local"?(x.petrol!=null?x.petrol:(x.fuel||0)):"",x.__mode==="local"?(x.cng||0):"",x.otherExpense||0,x.totalExpense,x.ownerBalance])];const csv="\ufeff"+rows.map(r=>r.map(v=>`"${String(v??"").replaceAll('"','""')}"`).join(",")).join("\n");download(`SST_Report_${today()}.csv`,csv,"text/csv;charset=utf-8")}
+$("pdfReport").onclick=()=>{if(!reportRows.length)filterReport();const w=window.open("","_blank");w.document.write(`<html><head><title>SST Report</title><style>body{font-family:Arial;padding:20px}table{width:100%;border-collapse:collapse}th,td{border:1px solid #ccc;padding:7px;font-size:12px}h2{margin-bottom:4px}</style><script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"><\/script>
+</head><body><h2>Sri Selvam Tours and Travels</h2><div>SST Daily / Monthly Report</div><p>Generated: ${new Date().toLocaleString()}</p><table><tr><th>Date</th><th>Driver</th><th>Vehicle</th><th>Type</th><th>Earnings</th><th>Salary</th><th>Expense</th><th>Balance</th></tr>${reportRows.map(x=>`<tr><td>${x.date||""}</td><td>${x.driverName||""}</td><td>${x.vehicleNo||""}</td><td>${x.__mode}</td><td>${money(x.totalEarnings)}</td><td>${money(x.driverSalary)}</td><td>${money(x.totalExpense)}</td><td>${money(x.ownerBalance)}</td></tr>`).join("")}</table><script>window.onload=()=>window.print()<\/script><script>
+window.addEventListener("load",function(){
+  setTimeout(function(){ if(window.__removeSSTStartup) window.__removeSSTStartup(); },250);
+},{once:true});
+<\/script></body></html>`);w.document.close()}
+
+let billMode="outstation";
+let posterVehicleData="", posterDestinationData="";
+function readPosterFile(input, target){
+  const f=input.files&&input.files[0]; if(!f){target("");previewInvoice();return;}
+  const r=new FileReader(); r.onload=()=>{target(r.result);previewInvoice()}; r.readAsDataURL(f);
+}
+$("posterVehiclePhoto").addEventListener("change",()=>readPosterFile($("posterVehiclePhoto"),v=>posterVehicleData=v));
+$("posterDestinationPhoto").addEventListener("change",()=>readPosterFile($("posterDestinationPhoto"),v=>posterDestinationData=v));
+$("posterDestination").addEventListener("input",previewInvoice);
+
+function setBillMode(m){
+  billMode=m;
+  $("billOutPanel").style.display=m==="outstation"?"block":"none";
+  $("billLocalPanel").style.display=m==="local"?"block":"none";
+  $("billTransferPanel").style.display=m==="transfer"?"block":"none";
+  $("billOutTab").className="btn "+(m==="outstation"?"":"off");
+  $("billLocalTab").className="btn "+(m==="local"?"":"off");
+  $("billTransferTab").className="btn "+(m==="transfer"?"":"off");
+  previewInvoice();
+}
+$("billOutTab").onclick=()=>setBillMode("outstation");
+$("billLocalTab").onclick=()=>setBillMode("local");
+$("billTransferTab").onclick=()=>setBillMode("transfer");
+
+function invoiceData(){
+  let lines=[], subtotal=0;
+  if(billMode==="outstation"){
+    const km=num("outKm"), rate=num("outKmRate"), kmAmt=km*rate;
+    lines=[
+      {d:$("outDesc").value||"Outstation KM",q:km?`${km} KM`:"-",r:rate?money(rate):"-",a:kmAmt},
+      {d:"Driver Bata",q:"1",r:num("billBata")?money(num("billBata")):"-",a:num("billBata")},
+      {d:"Toll",q:"-",r:"-",a:num("billToll")},
+      {d:"Parking",q:"-",r:"-",a:num("billParking")},
+      {d:"Interstate Permit",q:"-",r:"-",a:num("billPermit")},
+      {d:"Other Charges",q:"-",r:"-",a:num("billOther")}
+    ]; subtotal=lines.reduce((s,x)=>s+x.a,0);
+  } else if(billMode==="local"){
+    const packageRate=num("pkgRate"), ah=num("addHours"), ahr=num("addHourRate"), ak=num("addKm"), akr=num("addKmRate");
+    lines=[
+      {d:$("localDesc").value||"Local Package",q:`${num("pkgHours")||"-"} Hrs / ${num("pkgKm")||"-"} KM`,r:packageRate?money(packageRate):"-",a:packageRate},
+      {d:"Additional Hours",q:ah||"-",r:ahr?money(ahr):"-",a:ah*ahr},
+      {d:"Additional KM",q:ak?`${ak} KM`:"-",r:akr?money(akr):"-",a:ak*akr},
+      {d:"Driver Bata",q:"1",r:"-",a:num("localBata")},
+      {d:"Toll",q:"-",r:"-",a:num("localToll")},
+      {d:"Parking",q:"-",r:"-",a:num("localParking")},
+      {d:"Other Charges",q:"-",r:"-",a:num("localOther")}
+    ]; subtotal=lines.reduce((s,x)=>s+x.a,0);
+  } else {
+    const km=num("transferKm"), rate=num("transferKmRate"), fixed=num("transferFare");
+    const base=fixed>0?fixed:km*rate;
+    lines=[
+      {d:`${$("transferType").value} - ${$("transferDesc").value||"Transfer"}`,q:km?`${km} KM`:"1",r:fixed?money(fixed):(rate?money(rate):"-"),a:base},
+      {d:"Toll",q:"-",r:"-",a:num("transferToll")},
+      {d:"Parking",q:"-",r:"-",a:num("transferParking")},
+      {d:"Other Charges",q:"-",r:"-",a:num("transferOther")}
+    ]; subtotal=lines.reduce((s,x)=>s+x.a,0);
+  }
+  const advance=num("invAdvance"), balance=subtotal-advance;
+  return {
+    billingType:billMode, type:$("invType").value, no:$("invNo").value, invoiceDate:$("invDate").value,
+    customerName:$("custName").value.trim(), customerMobile:$("custMobile").value.trim(), customerAddress:$("custAddress").value.trim(),
+    from:$("invFrom").value.trim(), to:$("invTo").value.trim(), vehicleNo:$("invVehicleNo").value.trim().toUpperCase(),
+    vehicleType:$("invVehicleType").value.trim(), driverName:$("invDriver").value.trim(),
+    pickupDateTime:$("pickupDT").value, dropDateTime:$("dropDT").value, lines, subtotal, advance, balance,
+    notes:$("invNotes").value.trim()
+  };
+}
+function niceDT(v){if(!v)return"-";const d=new Date(v);return isNaN(d)?v:d.toLocaleString("en-IN",{dateStyle:"medium",timeStyle:"short"})}
+function esc(s){return String(s??"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[m]))}
+function previewInvoice(){
+ const x=invoiceData();
+ const rows=x.lines.filter(l=>l.a||l.d==="Outstation KM"||l.d==="Local Package"||String(l.d).includes("Transfer")).map(l=>`<tr><td>${esc(l.d)}</td><td>${esc(l.q)}</td><td>${esc(l.r)}</td><td style="text-align:right;font-weight:800">${money(l.a)}</td></tr>`).join("");
+ const navy="#062a55", blue="#0d4f91", gold="#f4b51c";
+ const tripLabel=x.billingType==="outstation"?"OUTSTATION":(x.billingType==="local"?"LOCAL PACKAGE":"AIRPORT / CITY TRANSFER");
+ const destination=$("posterDestination").value.trim()||x.to||"YOUR DESTINATION";
+ const heroBg=posterDestinationData?`background-image:linear-gradient(90deg,rgba(3,28,58,.96),rgba(3,28,58,.48)),url('${posterDestinationData}');background-size:cover;background-position:center;`:`background:linear-gradient(120deg,#05284f,#0b5798 62%,#e7f4ff);`;
+ const vehicle=posterVehicleData?`<img src="${posterVehicleData}" style="width:100%;height:100%;object-fit:contain;filter:drop-shadow(0 10px 8px rgba(0,0,0,.28))">`:`<div style="font-size:56px">🚐</div><div style="font-weight:900;margin-top:4px">YOUR VEHICLE</div>`;
+ $("invoicePreview").innerHTML=`
+ <div id="quotePoster" style="background:#fff;color:#10233e;font-family:Arial,sans-serif;max-width:900px;margin:auto">
+  <div style="${heroBg}min-height:330px;color:#fff;padding:24px;position:relative;overflow:hidden">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:15px">
+      <div style="display:flex;gap:14px;align-items:center">
+        <div style="width:76px;height:76px;border-radius:18px;background:${navy};border:4px solid ${gold};display:flex;align-items:center;justify-content:center;font-size:29px;font-weight:900;color:${gold}">SST</div>
+        <div><div style="font-size:31px;font-weight:900;letter-spacing:.5px">SRI SELVAM</div><div style="font-size:17px;color:${gold};font-weight:900;letter-spacing:1px">TOURS AND TRAVELS</div><div style="font-size:12px;margin-top:4px">Safe Journey • Reliable Service • Comfortable Travel</div></div>
+      </div>
+      <div style="text-align:right;font-size:12px;line-height:1.55"><b>${esc(x.type).toUpperCase()}</b><br>${esc(x.no||"-")}<br>${esc(x.invoiceDate||"-")}</div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1.15fr;align-items:end;gap:18px;margin-top:28px">
+      <div>
+        <div style="font-size:13px;color:#ffd765;font-weight:800">TRAVEL WITH SRI SELVAM</div>
+        <div style="font-size:35px;line-height:1.02;font-weight:900;margin-top:6px">YOUR JOURNEY,<br><span style="color:${gold}">OUR PRIORITY</span></div>
+        <div style="margin-top:14px;font-size:14px;line-height:1.65">Family Trips • Corporate Travel<br>Pilgrimage Tours • Airport Transfers<br>Local & Outstation</div>
+      </div>
+      <div style="height:180px;text-align:center;display:flex;align-items:center;justify-content:center">${vehicle}</div>
+    </div>
+    <div style="position:absolute;right:24px;bottom:14px;text-align:right"><div style="font-size:13px;color:#ffe59b">DESTINATION</div><div style="font-size:28px;font-weight:900">${esc(destination.toUpperCase())}</div></div>
+  </div>
+
+  <div style="background:linear-gradient(90deg,${navy},${blue});color:white;margin:-2px 22px 0;border-radius:0 0 18px 18px;padding:12px;text-align:center;font-size:27px;font-weight:900;letter-spacing:1px;border-bottom:5px solid ${gold}">${esc(tripLabel)} ${esc(x.type).toUpperCase()}</div>
+
+  <div style="padding:20px 22px">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+      <div style="border:1px solid #d8e4ef;border-radius:15px;overflow:hidden"><div style="background:${navy};color:white;padding:9px 13px;font-weight:800">👤 CUSTOMER DETAILS</div><div style="padding:13px;line-height:1.55"><b>${esc(x.customerName||"-")}</b><br>${esc(x.customerAddress||"").replace(/\n/g,"<br>")}<br>${esc(x.customerMobile||"")}</div></div>
+      <div style="border:1px solid #d8e4ef;border-radius:15px;overflow:hidden"><div style="background:${navy};color:white;padding:9px 13px;font-weight:800">📍 TRIP DETAILS</div><div style="padding:13px;line-height:1.65"><b>From:</b> ${esc(x.from||"-")}<br><b>To:</b> ${esc(x.to||"-")}<br><b>Pickup:</b> ${esc(niceDT(x.pickupDateTime))}<br><b>Drop:</b> ${esc(niceDT(x.dropDateTime))}</div></div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:1.15fr .85fr;gap:14px;margin-top:14px">
+      <div style="border:1px solid #d8e4ef;border-radius:15px;overflow:hidden"><div style="background:${navy};color:white;padding:9px 13px;font-weight:800">🚘 VEHICLE & DRIVER</div><div style="padding:13px;line-height:1.65"><b>Vehicle:</b> ${esc(x.vehicleType||"-")}<br><b>Vehicle No:</b> ${esc(x.vehicleNo||"-")}<br><b>Driver:</b> ${esc(x.driverName||"-")}</div></div>
+      <div style="background:linear-gradient(135deg,#fff8dc,#ffd45d);border:2px solid ${gold};border-radius:15px;text-align:center;padding:14px"><div style="font-size:13px;font-weight:900">TOTAL FARE</div><div style="font-size:39px;font-weight:900;color:${navy};margin:5px 0">${money(x.subtotal)}</div><div style="font-size:12px">Advance ${money(x.advance)} • Balance ${money(x.balance)}</div></div>
+    </div>
+
+    <div style="margin-top:15px;border:1px solid #d8e4ef;border-radius:15px;overflow:hidden">
+      <div style="background:${navy};color:#fff;padding:9px 13px;font-weight:800">₹ FARE DETAILS</div>
+      <table style="width:100%;border-collapse:collapse"><thead><tr style="background:#eaf2fb"><th style="padding:10px;text-align:left">Description</th><th style="padding:10px;text-align:left">Quantity</th><th style="padding:10px;text-align:left">Rate</th><th style="padding:10px;text-align:right">Amount</th></tr></thead><tbody>${rows}</tbody></table>
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:13px;margin-top:15px">
+      <div style="border:1px solid #9ed2ad;background:#effaf2;border-radius:14px;overflow:hidden"><div style="background:#087332;color:white;padding:8px;text-align:center;font-weight:900">✓ THIS FARE INCLUDING</div><div style="padding:12px;text-align:center;font-weight:700">Vehicle Hire Charges • Driver Service</div></div>
+      <div style="border:1px solid #efaaaa;background:#fff2f2;border-radius:14px;overflow:hidden"><div style="background:#c41414;color:white;padding:8px;text-align:center;font-weight:900">EXTRA CHARGES</div><div style="padding:12px;text-align:center;font-weight:700">Toll • Parking • Permit • Extra KM / Hours</div></div>
+    </div>
+
+    ${x.notes?`<div style="margin-top:14px;padding:12px;background:#fff9e9;border-left:5px solid ${gold}"><b>Notes:</b> ${esc(x.notes)}</div>`:""}
+
+    <div style="margin-top:16px;border:1px solid #d8e4ef;border-radius:14px;overflow:hidden"><div style="background:${navy};color:white;padding:8px 12px;font-weight:900">TERMS & CONDITIONS</div><div style="padding:12px;font-size:12px;line-height:1.65">1. Fare is applicable only for the mentioned trip / package.<br>2. Additional KM and hours will be charged as applicable.<br>3. Toll, parking and permit charges are payable as mentioned.<br>4. Vehicle is subject to availability and agreed schedule.</div></div>
+
+    <div style="text-align:right;padding:22px 5px 8px"><div style="font-size:31px;color:${navy};font-weight:900;font-style:italic">Thank You!</div><div style="font-size:12px">We look forward to serving you.</div></div>
+  </div>
+  <div style="background:${navy};color:white;border-top:5px solid ${gold};padding:12px 20px;display:flex;justify-content:space-between;font-size:12px"><span>🛡 Safe Journey</span><span>🚘 Reliable Service</span><span>👨‍👩‍👧 Comfortable Travel</span></div>
+ </div>`;
+}
+const invInputs=["invType","invNo","invDate","custMobile","custName","custAddress","invFrom","invTo","invVehicleNo","invVehicleType","invDriver","pickupDT","dropDT","outDesc","outKm","outKmRate","billBata","billToll","billParking","billPermit","billOther","localDesc","pkgHours","pkgKm","pkgRate","addHours","addHourRate","addKm","addKmRate","localBata","localToll","localParking","localOther","transferType","transferDesc","transferKm","transferKmRate","transferFare","transferToll","transferParking","transferOther","invAdvance","invNotes","posterDestination"];
+invInputs.forEach(id=>$(id)?.addEventListener("input",previewInvoice));
+$("previewInv").onclick=previewInvoice;
+$("saveInv").onclick=async()=>{
+ try{
+  const x=invoiceData();
+  if(!x.customerName||!x.vehicleNo||!x.pickupDateTime||!x.dropDateTime) throw new Error("Customer, Vehicle No, Pickup and Drop date/time required.");
+  const cloud={...x,linesJson:JSON.stringify(x.lines),createdBy:currentUser.uid,createdAt:new Date().toISOString()};
+  delete cloud.lines;
+  await fsAdd("customer_invoices",cloud);
+  setStatus("invStatus","Invoice saved to cloud ✓");
+ }catch(e){setStatus("invStatus","Invoice save failed: "+e.message,true)}
+};
+$("printInv").onclick=()=>{previewInvoice();$("invoiceSection").classList.add("printing");window.print();setTimeout(()=>$("invoiceSection").classList.remove("printing"),700)};
+$("shareInv").onclick=async()=>{
+ const x=invoiceData(), txt=`SRI SELVAM TOURS AND TRAVELS\n${x.type} ${x.no}\nCustomer: ${x.customerName}\nFrom: ${x.from}\nTo: ${x.to}\nVehicle: ${x.vehicleNo}\nPickup: ${niceDT(x.pickupDateTime)}\nDrop: ${niceDT(x.dropDateTime)}\nGrand Total: ${money(x.subtotal)}\nAdvance: ${money(x.advance)}\nBalance: ${money(x.balance)}`;
+ if(navigator.share) await navigator.share({text:txt}); else {await navigator.clipboard.writeText(txt);setStatus("invStatus","Invoice summary copied ✓")}
+};
+
+
+$("downloadInvImage").onclick=async()=>{
+  try{
+    previewInvoice();
+    if(!window.html2canvas) throw new Error("Image library load aagala. Internet connection check pannunga.");
+    $("downloadInvImage").disabled=true;
+    $("downloadInvImage").textContent="Creating Image...";
+    const canvas=await html2canvas($("quotePoster"),{scale:2,useCORS:true,backgroundColor:"#ffffff"});
+    const a=document.createElement("a");
+    a.download=`SST_${$("invType").value}_${$("invNo").value||today()}.png`;
+    a.href=canvas.toDataURL("image/png");
+    a.click();
+    setStatus("invStatus","Quotation / Invoice image created ✓");
+  }catch(e){
+    setStatus("invStatus","Image create failed: "+e.message,true);
+  }finally{
+    $("downloadInvImage").disabled=false;
+    $("downloadInvImage").textContent="Download Image";
+  }
+};
+
+async function refreshAll(){await renderHistory();if(userProfile.role==="admin")await loadDrivers();filterReport();previewInvoice()}
+previewInvoice();calc();applyLang();
+</script>
+</body>
+</html>
